@@ -1,0 +1,10 @@
+project_id = "uiuecyakzpooeerejaye"
+
+[functions.calendar-auth]
+verify_jwt = false
+
+[functions.oauth-callback]
+verify_jwt = false
+
+[functions.calendar-sync]
+verify_jwt = false

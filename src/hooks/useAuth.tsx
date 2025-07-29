@@ -40,19 +40,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
+
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName
-        }
+          full_name: fullName,
+        },
       }
     });
-    return { error };
+
+    console.log("SignUp response:", data);
+    if (error) {
+      console.error("Supabase signUp error:", error);
+      return { error };
+    }
+
+    const userId = data.user?.id || data.session?.user.id;
+    if (userId) {
+      const { error: insertError } = await supabase.from('profiles').insert([
+        {
+          user_id: userId,
+          full_name: fullName,
+        }
+      ]);
+
+      console.log("Insert profile error:", insertError);
+      if (insertError) return { error: insertError };
+    }
+
+    return { error: null };
   };
+
+
+
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({

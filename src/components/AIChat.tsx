@@ -64,42 +64,42 @@ useEffect(() => {
     }
   };
 
-  const generateAIResponse = (message: string): string => {
-    const lowerMessage = message.toLowerCase();
+  // const generateAIResponse = (message: string): string => {
+  //   const lowerMessage = message.toLowerCase();
     
-    // Diet advice
-    if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
-      return "During your menstrual cycle, focus on iron-rich foods like leafy greens, lean meats, and legumes to combat fatigue. Omega-3 fatty acids from fish and nuts can help reduce inflammation. Stay hydrated and consider magnesium-rich foods like dark chocolate and almonds to help with cramps. Limit caffeine and processed foods which can worsen symptoms.";
-    }
+  //   // Diet advice
+  //   if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
+  //     return "During your menstrual cycle, focus on iron-rich foods like leafy greens, lean meats, and legumes to combat fatigue. Omega-3 fatty acids from fish and nuts can help reduce inflammation. Stay hydrated and consider magnesium-rich foods like dark chocolate and almonds to help with cramps. Limit caffeine and processed foods which can worsen symptoms.";
+  //   }
     
-    // Symptom management
-    if (lowerMessage.includes('cramp') || lowerMessage.includes('pain')) {
-      return "For menstrual cramps, try applying heat to your lower abdomen, gentle exercise like walking or yoga, and staying hydrated. Magnesium supplements and anti-inflammatory foods can help. If pain is severe or interferes with daily activities, consider consulting your healthcare provider about pain management options.";
-    }
+  //   // Symptom management
+  //   if (lowerMessage.includes('cramp') || lowerMessage.includes('pain')) {
+  //     return "For menstrual cramps, try applying heat to your lower abdomen, gentle exercise like walking or yoga, and staying hydrated. Magnesium supplements and anti-inflammatory foods can help. If pain is severe or interferes with daily activities, consider consulting your healthcare provider about pain management options.";
+  //   }
     
-    // Mood and mental health
-    if (lowerMessage.includes('mood') || lowerMessage.includes('emotional') || lowerMessage.includes('stress')) {
-      return "Hormonal changes during your cycle can affect mood. Practice self-care through regular sleep, gentle exercise, and relaxation techniques like meditation. Journaling can help track mood patterns. Don't hesitate to reach out to friends, family, or a mental health professional if you're struggling. Remember, these feelings are valid and temporary.";
-    }
+  //   // Mood and mental health
+  //   if (lowerMessage.includes('mood') || lowerMessage.includes('emotional') || lowerMessage.includes('stress')) {
+  //     return "Hormonal changes during your cycle can affect mood. Practice self-care through regular sleep, gentle exercise, and relaxation techniques like meditation. Journaling can help track mood patterns. Don't hesitate to reach out to friends, family, or a mental health professional if you're struggling. Remember, these feelings are valid and temporary.";
+  //   }
     
-    // Exercise and activity
-    if (lowerMessage.includes('exercise') || lowerMessage.includes('workout') || lowerMessage.includes('activity')) {
-      return "Listen to your body during different cycle phases. During menstruation, gentle activities like walking, light yoga, or stretching can help. As estrogen rises (follicular phase), you might have more energy for moderate workouts. During ovulation, you may feel strongest. In the luteal phase, consider reducing intensity if you feel fatigued.";
-    }
+  //   // Exercise and activity
+  //   if (lowerMessage.includes('exercise') || lowerMessage.includes('workout') || lowerMessage.includes('activity')) {
+  //     return "Listen to your body during different cycle phases. During menstruation, gentle activities like walking, light yoga, or stretching can help. As estrogen rises (follicular phase), you might have more energy for moderate workouts. During ovulation, you may feel strongest. In the luteal phase, consider reducing intensity if you feel fatigued.";
+  //   }
     
-    // Sleep
-    if (lowerMessage.includes('sleep') || lowerMessage.includes('tired') || lowerMessage.includes('fatigue')) {
-      return "Hormonal changes can affect sleep quality throughout your cycle. Maintain a consistent sleep schedule, create a relaxing bedtime routine, and keep your bedroom cool and dark. If you experience insomnia before your period, try relaxation techniques and limit screen time before bed. Aim for 7-9 hours of quality sleep.";
-    }
+  //   // Sleep
+  //   if (lowerMessage.includes('sleep') || lowerMessage.includes('tired') || lowerMessage.includes('fatigue')) {
+  //     return "Hormonal changes can affect sleep quality throughout your cycle. Maintain a consistent sleep schedule, create a relaxing bedtime routine, and keep your bedroom cool and dark. If you experience insomnia before your period, try relaxation techniques and limit screen time before bed. Aim for 7-9 hours of quality sleep.";
+  //   }
     
-    // General cycle questions
-    if (lowerMessage.includes('cycle') || lowerMessage.includes('period') || lowerMessage.includes('menstrual')) {
-      return "A typical menstrual cycle is 21-35 days long, with periods lasting 3-7 days. Track your cycles to understand your personal patterns. Irregular cycles can be normal, especially during adolescence or perimenopause, but significant changes should be discussed with a healthcare provider. Each person's cycle is unique!";
-    }
+  //   // General cycle questions
+  //   if (lowerMessage.includes('cycle') || lowerMessage.includes('period') || lowerMessage.includes('menstrual')) {
+  //     return "A typical menstrual cycle is 21-35 days long, with periods lasting 3-7 days. Track your cycles to understand your personal patterns. Irregular cycles can be normal, especially during adolescence or perimenopause, but significant changes should be discussed with a healthcare provider. Each person's cycle is unique!";
+  //   }
     
-    // Default response
-    return "I'm here to help with menstrual health, nutrition, wellness tips, and cycle-related questions. Feel free to ask about managing symptoms, diet recommendations, exercise during different cycle phases, or emotional support. Remember, I provide general guidance - always consult your healthcare provider for medical concerns.";
-  };
+  //   // Default response
+  //   return "I'm here to help with menstrual health, nutrition, wellness tips, and cycle-related questions. Feel free to ask about managing symptoms, diet recommendations, exercise during different cycle phases, or emotional support. Remember, I provide general guidance - always consult your healthcare provider for medical concerns.";
+  // };
 
   // const handleSendMessage = async () => {
   //   if (!inputMessage.trim()) return;
@@ -176,6 +176,25 @@ useEffect(() => {
 //   }
 // };
 
+const generateAIResponse = async (message: string): Promise<string> => {
+  try {
+    const res = await fetch('https://automations.aiagents.co.id/webhook/ai-health-guide', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message, user_id: user?.id }),
+    });
+
+    const data = await res.json();
+    console.log(data.content);
+    return data.content || "Sorry, I couldn't understand your question.";
+  } catch (err) {
+    console.error('Error fetching AI response from n8n:', err);
+    return "There was an error contacting the AI service.";
+  }
+};
+
 const handleSendMessage = async () => {
   if (!inputMessage.trim()) return;
 
@@ -183,7 +202,9 @@ const handleSendMessage = async () => {
   const userMessage = inputMessage.trim();
   setInputMessage('');
 
-  const aiResponse = generateAIResponse(userMessage);
+  // const aiResponse = generateAIResponse(userMessage);
+  const aiResponse = await generateAIResponse(userMessage);
+
 
   try {
     const { data, error } = await supabase

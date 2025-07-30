@@ -72,7 +72,7 @@ const Auth = () => {
           <div className="flex justify-center mb-4">
             <Heart className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Welcome to Bloom</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Health Wise AI Tracker</CardTitle>
           <CardDescription>Your personal cycle companion</CardDescription>
         </CardHeader>
         <CardContent>

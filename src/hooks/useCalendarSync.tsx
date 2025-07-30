@@ -18,8 +18,8 @@ export const useCalendarSync = () => {
       }
 
       // Call our calendar-auth edge function to get the OAuth URL
-      // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-auth`, {
-      const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+      const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-auth`, {
+      // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,

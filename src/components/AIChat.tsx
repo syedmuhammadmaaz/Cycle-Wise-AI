@@ -7,6 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { X, Send, Bot, User } from 'lucide-react';
+import { useCalendarStore } from '@/store/calendarStore'
+import { fetchUserCycleEvents } from '@/lib/calendarClient'
+
+
 
 interface AIChatProps {
   onClose: () => void;
@@ -32,11 +36,25 @@ const AIChat = ({ onClose }: AIChatProps) => {
   // useEffect(() => {
   //   fetchChatHistory();
   // }, [user]);
+// useEffect(() => {
+//   if (user?.id) {
+//     fetchChatHistory();
+//   }
+// }, [user?.id]);
+
+
+
 useEffect(() => {
   if (user?.id) {
     fetchChatHistory();
+
+    fetchUserCycleEvents(user.id).then(events => {
+       console.log(' Events fetched from Supabase:', events);
+      useCalendarStore.getState().setEvents(events);
+    });
   }
 }, [user?.id]);
+
 
   // useEffect(() => {
   //   if (scrollAreaRef.current) {
@@ -176,14 +194,42 @@ useEffect(() => {
 //   }
 // };
 
-const generateAIResponse = async (message: string): Promise<string> => {
+// const generateAIResponse = async (message: string): Promise<string> => {
+//   try {
+//     const res = await fetch('https://automations.aiagents.co.id/webhook/ai-health-guide', {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//       },
+//       body: JSON.stringify({ message, user_id: user?.id }),
+//     });
+
+//     const data = await res.json();
+//     console.log(data.content);
+//     return data.content || "Sorry, I couldn't understand your question.";
+//   } catch (err) {
+//     console.error('Error fetching AI response from n8n:', err);
+//     return "There was an error contacting the AI service.";
+//   }
+// };
+
+
+
+const generateAIResponse = async (
+  message: string,
+  events: CalendarEvent[]
+): Promise<string> => {
   try {
     const res = await fetch('https://automations.aiagents.co.id/webhook/ai-health-guide', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message, user_id: user?.id }),
+      body: JSON.stringify({
+        message,
+        user_id: user?.id,
+        events, 
+      }),
     });
 
     const data = await res.json();
@@ -195,6 +241,7 @@ const generateAIResponse = async (message: string): Promise<string> => {
   }
 };
 
+
 const handleSendMessage = async () => {
   if (!inputMessage.trim()) return;
 
@@ -203,8 +250,11 @@ const handleSendMessage = async () => {
   setInputMessage('');
 
   // const aiResponse = generateAIResponse(userMessage);
-  const aiResponse = await generateAIResponse(userMessage);
+  // 🧠 Pull events from global state
+  const calendarEvents = useCalendarStore.getState().events;
 
+  // 👇 Pass calendar events with the message
+  const aiResponse = await generateAIResponse(userMessage, calendarEvents);
 
   try {
     const { data, error } = await supabase

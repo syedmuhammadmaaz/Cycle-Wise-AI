@@ -11,7 +11,6 @@ import { useCalendarStore } from '@/store/calendarStore'
 import { fetchUserCycleEvents } from '@/lib/calendarClient'
 
 
-
 interface AIChatProps {
   onClose: () => void;
 }
@@ -31,17 +30,6 @@ const AIChat = ({ onClose }: AIChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-
-  // useEffect(() => {
-  //   fetchChatHistory();
-  // }, [user]);
-// useEffect(() => {
-//   if (user?.id) {
-//     fetchChatHistory();
-//   }
-// }, [user?.id]);
-
 
 
 useEffect(() => {

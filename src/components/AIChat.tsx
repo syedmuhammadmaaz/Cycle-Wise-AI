@@ -277,7 +277,10 @@ const handleSendMessage = async () => {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-2xl h-[80vh] flex flex-col">
+       {/* <Card className="w-full max-w-2xl h-[80vh] flex flex-col"> */}
+       {/* <Card className="w-full max-w-4xl h-[90vh] flex flex-col"> */}
+    <Card className="w-full max-w-6xl h-[95vh] flex flex-col">
+
         <CardHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -292,7 +295,9 @@ const handleSendMessage = async () => {
         </CardHeader>
         
         <CardContent className="flex-1 flex flex-col p-0">
-<ScrollArea className="flex-1 p-4 overflow-y-auto max-h-[calc(80vh-160px)]">
+<ScrollArea className="flex-1 p-4 overflow-y-auto max-h-[calc(95vh-160px)]">
+  {/* <ScrollArea className="flex-1 px-4 pt-4 overflow-y-auto"> */}
+
   <div className="flex flex-col gap-4">
     {/* Empty state */}
     {messages.length === 0 && (
@@ -363,8 +368,8 @@ const handleSendMessage = async () => {
 
 
           
-          <div className="border-t p-4">
-            <div className="flex gap-2">
+          {/* <div className="border-t p-4">
+            <div className="flex gap-2"> */}
               {/* <Input
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
@@ -373,14 +378,14 @@ const handleSendMessage = async () => {
                 disabled={isLoading}
                 className="flex-1"
               /> */}
-              <Input
+              {/* <Input
   value={inputMessage}
   onChange={(e) => setInputMessage(e.target.value)}
   onKeyPress={handleKeyPress}
   placeholder="Ask about your menstrual health..."
   disabled={isLoading || !user}
   className="flex-1"
-/>
+/> */}
 
               {/* <Button 
                 onClick={handleSendMessage} 
@@ -390,16 +395,86 @@ const handleSendMessage = async () => {
                 <Send className="h-4 w-4" />
               </Button> */}
 
-              <Button 
+              {/* <Button 
   onClick={handleSendMessage} 
   disabled={isLoading || !inputMessage.trim() || !user}
   size="sm"
 >
   <Send className="h-4 w-4" />
-</Button>
+</Button> */}
 
-            </div>
-          </div>
+            {/* </div> */}
+          {/* </div>
+           */}
+
+
+ {/* <div className="border-t p-3 bg-gradient-to-r from-pink-50 to-rose-100 shadow-inner">
+  <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-md">
+    <Input
+      value={inputMessage}
+      onChange={(e) => setInputMessage(e.target.value)}
+      onKeyPress={handleKeyPress}
+      placeholder="Ask about your menstrual health..."
+      disabled={isLoading || !user}
+      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm placeholder:text-muted-foreground"
+    />
+    <Button 
+      onClick={handleSendMessage} 
+      disabled={isLoading || !inputMessage.trim() || !user}
+      size="icon"
+      className="bg-rose-500 hover:bg-rose-600 text-white shadow-md"
+    >
+      <Send className="h-4 w-4" />
+    </Button>
+  </div>
+</div> */}
+
+
+{/* <div className="border-t p-3 bg-gradient-to-br from-pink-100 via-rose-200 to-fuchsia-100 shadow-inner backdrop-blur-sm">
+  <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2 shadow-lg border border-white/30 ring-1 ring-rose-100">
+    <Input
+      value={inputMessage}
+      onChange={(e) => setInputMessage(e.target.value)}
+      onKeyPress={handleKeyPress}
+      placeholder="Ask about your menstrual health..."
+      disabled={isLoading || !user}
+      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm text-rose-900 placeholder:text-rose-400"
+    />
+    <Button 
+      onClick={handleSendMessage} 
+      disabled={isLoading || !inputMessage.trim() || !user}
+      size="icon"
+      className="bg-gradient-to-tr from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-200"
+    >
+      <Send className="h-4 w-4" />
+    </Button>
+  </div>
+</div> */}
+
+
+<div className="border-t p-3 bg-gradient-to-br from-pink-100 via-rose-200 to-fuchsia-100 shadow-inner backdrop-blur-md">
+  <div className="flex items-center gap-3 bg-white/70 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-xl border border-white/30 ring-1 ring-rose-200">
+    <Input
+      value={inputMessage}
+      onChange={(e) => setInputMessage(e.target.value)}
+      onKeyPress={handleKeyPress}
+      placeholder="Ask about your menstrual health..."
+      disabled={isLoading || !user}
+      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm text-rose-900 placeholder:text-rose-400 placeholder:italic"
+    />
+    <Button 
+      onClick={handleSendMessage} 
+      disabled={isLoading || !inputMessage.trim() || !user}
+      size="icon"
+      className="bg-gradient-to-tr from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-200 transition-all duration-200 ease-in-out"
+    >
+      <Send className="h-4 w-4" />
+    </Button>
+  </div>
+</div>
+
+
+
         </CardContent>
       </Card>
     </div>

@@ -13,7 +13,7 @@ const Index = () => {
             <Heart className="h-16 w-16 text-primary" />
           </div>
           <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Welcome to Bloom
+            Welcome to Health Wise AI 
           </h1>
           <p className="text-xl text-muted-foreground mb-8">
             Your personal menstrual cycle companion. Track your cycles, get AI-powered health guidance, 
@@ -144,7 +144,7 @@ const Index = () => {
       <footer className="border-t bg-card/50 backdrop-blur">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-muted-foreground">
-            <p>&copy; 2024 Bloom. Your wellness journey starts here.</p>
+            <p>&copy; 2025 Health Wise AI. Your wellness journey starts here.</p>
           </div>
         </div>
       </footer>

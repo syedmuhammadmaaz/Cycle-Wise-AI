@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { X, Send, Bot, User } from 'lucide-react';
 import { useCalendarStore } from '@/store/calendarStore'
 import { fetchUserCycleEvents } from '@/lib/calendarClient'
+import ReactMarkdown from 'react-markdown';
 
 
 interface AIChatProps {
@@ -329,17 +330,34 @@ const handleSendMessage = async () => {
         </div>
 
         {/* AI response */}
-        <div className="flex items-start gap-3">
+        {/* <div className="flex items-start gap-3">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Bot className="h-4 w-4 text-primary" />
           </div>
           <div className="flex-1">
             <div className="bg-primary/5 rounded-lg p-3">
-              <p className="text-sm">{msg.response}</p>
+              <p className="text-sm">{msg.response}</p> 
             </div>
             <p className="text-xs text-muted-foreground mt-1">AI Health Guide</p>
           </div>
-        </div>
+        </div> */}
+        {/* AI response */}
+<div className="flex items-start gap-3">
+  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+    <Bot className="h-4 w-4 text-primary" />
+  </div>
+  <div className="flex-1">
+    <div className="bg-primary/5 rounded-lg p-3">
+      <div className="prose prose-sm max-w-none text-sm text-gray-800">
+        <ReactMarkdown>
+          {msg.response}
+        </ReactMarkdown>
+      </div>
+    </div>
+    <p className="text-xs text-muted-foreground mt-1">AI Health Guide</p>
+  </div>
+</div>
+
       </div>
     ))}
 

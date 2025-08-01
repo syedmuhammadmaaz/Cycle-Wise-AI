@@ -297,7 +297,7 @@ const generateAIResponse = async (
                   transition={{ duration: 3, repeat: Infinity }}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
-                  <div className="relative w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+                  <div className="relative w-full h-full bg-gradient-to-br from-blue-500/30 to-blue-300/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
                     <Bot className="h-10 w-10 text-primary" />
                   </div>
                   <motion.div
@@ -372,7 +372,7 @@ const generateAIResponse = async (
                         transition={{ type: "spring", stiffness: 300 }}
                       >
                         {/* Animated border */}
-                        <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-pink-400 via-pink-500 to-rose-500 rounded-r-full">
+                        <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500 rounded-r-full">
                           <motion.div 
                             className="w-full h-2 bg-white/50 rounded-full"
                             animate={{ y: [0, '100%', 0] }}
@@ -418,7 +418,7 @@ const generateAIResponse = async (
                         {/* Animated gradient border */}
                         <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full overflow-hidden">
                           <motion.div 
-                            className="w-full h-full bg-gradient-to-b from-purple-400 via-violet-500 to-purple-600"
+                            className="w-full h-full bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500"
                             animate={{ 
                               background: [
                                 "linear-gradient(to bottom, rgb(168 85 247), rgb(139 92 246), rgb(147 51 234))",
@@ -455,7 +455,7 @@ const generateAIResponse = async (
                           <Bot className="h-3 w-3 text-purple-600" />
                         </motion.div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Sparkles className="h-3 w-3 text-purple-500" />
+                          <Sparkles className="h-3 w-3 text-teal-500" />
                           <span>AI Health Guide</span>
                           <motion.div 
                             className="w-1 h-1 bg-green-400 rounded-full"
@@ -536,7 +536,7 @@ const generateAIResponse = async (
                   
                   <div className="flex items-center gap-2 mt-2">
                     <motion.div 
-                      className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-purple-500/20"
+                      className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-blue-400/20"
                       animate={{ rotate: 360 }}
                       transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
                     >

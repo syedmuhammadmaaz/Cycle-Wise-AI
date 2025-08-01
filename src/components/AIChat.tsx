@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { X, Send, Bot, User } from 'lucide-react';
+import { X, Send, Bot, User, Sparkles, Heart, Brain, Activity, Shield, Zap, MessageCircle, Clock, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore'
 import { fetchUserCycleEvents } from '@/lib/calendarClient'
 import ReactMarkdown from 'react-markdown';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+
 
 
 interface AIChatProps {
@@ -33,7 +36,8 @@ const AIChat = ({ onClose }: AIChatProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
 
-useEffect(() => {
+
+  useEffect(() => {
   if (user?.id) {
     fetchChatHistory();
 
@@ -46,16 +50,20 @@ useEffect(() => {
 
 
   // useEffect(() => {
+  //   fetchChatHistory();
+  // }, [user]);
+
+  // useEffect(() => {
   //   if (scrollAreaRef.current) {
   //     scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
   //   }
   // }, [messages]);
-  useEffect(() => {
+
+    useEffect(() => {
   bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
 }, [messages]);
 
-
-  const fetchChatHistory = async () => {
+   const fetchChatHistory = async () => {
     try {
       const { data, error } = await supabase
         .from('chat_messages')
@@ -70,139 +78,6 @@ useEffect(() => {
       console.error('Error fetching chat history:', error);
     }
   };
-
-  // const generateAIResponse = (message: string): string => {
-  //   const lowerMessage = message.toLowerCase();
-    
-  //   // Diet advice
-  //   if (lowerMessage.includes('diet') || lowerMessage.includes('food') || lowerMessage.includes('eat')) {
-  //     return "During your menstrual cycle, focus on iron-rich foods like leafy greens, lean meats, and legumes to combat fatigue. Omega-3 fatty acids from fish and nuts can help reduce inflammation. Stay hydrated and consider magnesium-rich foods like dark chocolate and almonds to help with cramps. Limit caffeine and processed foods which can worsen symptoms.";
-  //   }
-    
-  //   // Symptom management
-  //   if (lowerMessage.includes('cramp') || lowerMessage.includes('pain')) {
-  //     return "For menstrual cramps, try applying heat to your lower abdomen, gentle exercise like walking or yoga, and staying hydrated. Magnesium supplements and anti-inflammatory foods can help. If pain is severe or interferes with daily activities, consider consulting your healthcare provider about pain management options.";
-  //   }
-    
-  //   // Mood and mental health
-  //   if (lowerMessage.includes('mood') || lowerMessage.includes('emotional') || lowerMessage.includes('stress')) {
-  //     return "Hormonal changes during your cycle can affect mood. Practice self-care through regular sleep, gentle exercise, and relaxation techniques like meditation. Journaling can help track mood patterns. Don't hesitate to reach out to friends, family, or a mental health professional if you're struggling. Remember, these feelings are valid and temporary.";
-  //   }
-    
-  //   // Exercise and activity
-  //   if (lowerMessage.includes('exercise') || lowerMessage.includes('workout') || lowerMessage.includes('activity')) {
-  //     return "Listen to your body during different cycle phases. During menstruation, gentle activities like walking, light yoga, or stretching can help. As estrogen rises (follicular phase), you might have more energy for moderate workouts. During ovulation, you may feel strongest. In the luteal phase, consider reducing intensity if you feel fatigued.";
-  //   }
-    
-  //   // Sleep
-  //   if (lowerMessage.includes('sleep') || lowerMessage.includes('tired') || lowerMessage.includes('fatigue')) {
-  //     return "Hormonal changes can affect sleep quality throughout your cycle. Maintain a consistent sleep schedule, create a relaxing bedtime routine, and keep your bedroom cool and dark. If you experience insomnia before your period, try relaxation techniques and limit screen time before bed. Aim for 7-9 hours of quality sleep.";
-  //   }
-    
-  //   // General cycle questions
-  //   if (lowerMessage.includes('cycle') || lowerMessage.includes('period') || lowerMessage.includes('menstrual')) {
-  //     return "A typical menstrual cycle is 21-35 days long, with periods lasting 3-7 days. Track your cycles to understand your personal patterns. Irregular cycles can be normal, especially during adolescence or perimenopause, but significant changes should be discussed with a healthcare provider. Each person's cycle is unique!";
-  //   }
-    
-  //   // Default response
-  //   return "I'm here to help with menstrual health, nutrition, wellness tips, and cycle-related questions. Feel free to ask about managing symptoms, diet recommendations, exercise during different cycle phases, or emotional support. Remember, I provide general guidance - always consult your healthcare provider for medical concerns.";
-  // };
-
-  // const handleSendMessage = async () => {
-  //   if (!inputMessage.trim()) return;
-
-  //   setIsLoading(true);
-  //   const userMessage = inputMessage.trim();
-  //   setInputMessage('');
-
-  //   // Generate AI response (in a real app, this would call an AI API)
-  //   const aiResponse = generateAIResponse(userMessage);
-
-  //   try {
-  //     const { data, error } = await supabase
-  //       .from('chat_messages')
-  //       .insert({
-  //         user_id: user?.id,
-  //         message: userMessage,
-  //         response: aiResponse,
-  //         message_type: 'health_guidance'
-  //       })
-  //       .select()
-  //       .single();
-
-  //     if (error) throw error;
-  //     setMessages(prev => [...prev, data]);
-  //   } catch (error) {
-  //     console.error('Error saving chat message:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-//   const handleSendMessage = async () => {
-//   if (!inputMessage.trim()) return;
-
-//   setIsLoading(true);
-//   const userMessage = inputMessage.trim();
-//   setInputMessage('');
-
-//   const aiResponse = generateAIResponse(userMessage);
-
-//   // 1. Optimistically add user's message (temporary)
-//   const tempMessage: ChatMessage = {
-//     id: crypto.randomUUID(),
-//     message: userMessage,
-//     response: '', // initially empty
-//     message_type: 'health_guidance',
-//     created_at: new Date().toISOString(),
-//   };
-//   setMessages(prev => [...prev, tempMessage]);
-
-//   try {
-//     // 2. Save the full message with response
-//     const { data, error } = await supabase
-//       .from('chat_messages')
-//       .insert({
-//         user_id: user?.id,
-//         message: userMessage,
-//         response: aiResponse,
-//         message_type: 'health_guidance',
-//       })
-//       .select()
-//       .single();
-
-//     if (error) throw error;
-
-//     // 3. Replace temp message with real message from Supabase
-//     setMessages(prev => [...prev.slice(0, -1), data]);
-//   } catch (error) {
-//     console.error('Error saving chat message:', error);
-//     // Optional: show error message or retry logic
-//   } finally {
-//     setIsLoading(false);
-//   }
-// };
-
-// const generateAIResponse = async (message: string): Promise<string> => {
-//   try {
-//     const res = await fetch('https://automations.aiagents.co.id/webhook/ai-health-guide', {
-//       method: 'POST',
-//       headers: {
-//         'Content-Type': 'application/json',
-//       },
-//       body: JSON.stringify({ message, user_id: user?.id }),
-//     });
-
-//     const data = await res.json();
-//     console.log(data.content);
-//     return data.content || "Sorry, I couldn't understand your question.";
-//   } catch (err) {
-//     console.error('Error fetching AI response from n8n:', err);
-//     return "There was an error contacting the AI service.";
-//   }
-// };
-
-
 
 const generateAIResponse = async (
   message: string,
@@ -230,44 +105,41 @@ const generateAIResponse = async (
   }
 };
 
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return;
 
-const handleSendMessage = async () => {
-  if (!inputMessage.trim()) return;
-
-  setIsLoading(true);
-  const userMessage = inputMessage.trim();
-  setInputMessage('');
-
-  // const aiResponse = generateAIResponse(userMessage);
+    setIsLoading(true);
+    const userMessage = inputMessage.trim();
+    setInputMessage('');
+// const aiResponse = generateAIResponse(userMessage);
   // 🧠 Pull events from global state
   const calendarEvents = useCalendarStore.getState().events;
 
   // 👇 Pass calendar events with the message
   const aiResponse = await generateAIResponse(userMessage, calendarEvents);
+    // Generate AI response (in a real app, this would call an AI API)
+    // const aiResponse = generateAIResponse(userMessage);
 
-  try {
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        user_id: user?.id,
-        message: userMessage,
-        response: aiResponse,
-        message_type: 'health_guidance',
-      })
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .insert({
+          user_id: user?.id,
+          message: userMessage,
+          response: aiResponse,
+          message_type: 'health_guidance'
+        })
+        .select()
+        .single();
 
-    if (error) throw error;
-
-    setMessages(prev => [...prev, data]);
-  } catch (error) {
-    console.error('Error saving chat message:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-
+      if (error) throw error;
+      setMessages(prev => [...prev, data]);
+    } catch (error) {
+      console.error('Error saving chat message:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -277,225 +149,529 @@ const handleSendMessage = async () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-       {/* <Card className="w-full max-w-2xl h-[80vh] flex flex-col"> */}
-       {/* <Card className="w-full max-w-4xl h-[90vh] flex flex-col"> */}
-    <Card className="w-full max-w-6xl h-[95vh] flex flex-col">
-
-        <CardHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-primary" />
-              <CardTitle>AI Health Guide</CardTitle>
-              <Badge variant="secondary" className="text-xs">Beta</Badge>
-            </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardHeader>
-        
-        <CardContent className="flex-1 flex flex-col p-0">
-<ScrollArea className="flex-1 p-4 overflow-y-auto max-h-[calc(95vh-160px)]">
-  {/* <ScrollArea className="flex-1 px-4 pt-4 overflow-y-auto"> */}
-
-  <div className="flex flex-col gap-4">
-    {/* Empty state */}
-    {messages.length === 0 && (
-      <div className="text-center py-8">
-        <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">AI Health Guide</h3>
-        <p className="text-muted-foreground text-sm">
-          Ask me about menstrual health, nutrition tips, managing symptoms, or emotional wellness during your cycle.
-        </p>
-      </div>
-    )}
-
-    {/* Message list */}
-    {messages.map((msg) => (
-      <div key={msg.id} className="space-y-3">
-        {/* User message */}
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <User className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <div className="bg-muted rounded-lg p-3">
-              <p className="text-sm">{msg.message}</p>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {new Date(msg.created_at).toLocaleTimeString()}
-            </p>
-          </div>
+    <AnimatePresence>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+        onClick={onClose}
+      >
+        {/* Floating particles background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(20)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-1 h-1 bg-primary/20 rounded-full"
+              initial={{ 
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                scale: 0
+              }}
+              animate={{ 
+                y: [null, -100],
+                scale: [0, 1, 0],
+                opacity: [0, 0.6, 0]
+              }}
+              transition={{
+                duration: 3 + Math.random() * 2,
+                repeat: Infinity,
+                delay: Math.random() * 2
+              }}
+            />
+          ))}
         </div>
 
-        {/* AI response */}
-        {/* <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Bot className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <div className="bg-primary/5 rounded-lg p-3">
-              <p className="text-sm">{msg.response}</p> 
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.9, opacity: 0, y: 20 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="w-full max-w-2xl h-[85vh] bg-background/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Enhanced Gradient Header */}
+          <div className="relative bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-6 flex-shrink-0 overflow-hidden">
+            {/* Animated background pattern */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-32 h-32 bg-white rounded-full -translate-x-16 -translate-y-16"></div>
+              <div className="absolute bottom-0 right-0 w-24 h-24 bg-white rounded-full translate-x-12 translate-y-12"></div>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">AI Health Guide</p>
-          </div>
-        </div> */}
-        {/* AI response */}
-<div className="flex items-start gap-3">
-  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-    <Bot className="h-4 w-4 text-primary" />
-  </div>
-  <div className="flex-1">
-    <div className="bg-primary/5 rounded-lg p-3">
-      <div className="prose prose-sm max-w-none text-sm text-gray-800">
-        <ReactMarkdown>
-          {msg.response}
-        </ReactMarkdown>
-      </div>
-    </div>
-    <p className="text-xs text-muted-foreground mt-1">AI Health Guide</p>
-  </div>
-</div>
+            
+            {/* Status indicator */}
+            <motion.div 
+              className="absolute top-4 right-20 flex items-center gap-2 text-primary-foreground/80 text-xs"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+            >
+              <motion.div 
+                className="w-2 h-2 bg-green-400 rounded-full"
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <span>Online</span>
+            </motion.div>
 
-      </div>
-    ))}
-
-    {/* Typing loader */}
-    {isLoading && (
-      <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Bot className="h-4 w-4 text-primary" />
-        </div>
-        <div className="flex-1">
-          <div className="bg-primary/5 rounded-lg p-3">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" />
-              <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-              <div className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-
-    {/* 👇 Ensure this stays at the very end */}
-    <div ref={bottomRef} />
-  </div>
-</ScrollArea>
-
-
-          
-          {/* <div className="border-t p-4">
-            <div className="flex gap-2"> */}
-              {/* <Input
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask about your menstrual health..."
-                disabled={isLoading}
-                className="flex-1"
-              /> */}
-              {/* <Input
-  value={inputMessage}
-  onChange={(e) => setInputMessage(e.target.value)}
-  onKeyPress={handleKeyPress}
-  placeholder="Ask about your menstrual health..."
-  disabled={isLoading || !user}
-  className="flex-1"
-/> */}
-
-              {/* <Button 
-                onClick={handleSendMessage} 
-                disabled={isLoading || !inputMessage.trim()}
-                size="sm"
+            <div className="relative flex items-center justify-between text-primary-foreground">
+              <div className="flex items-center gap-4">
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 10, -10, 0],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3 
+                  }}
+                  className="relative w-12 h-12 bg-gradient-to-br from-white/30 to-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/20"
+                >
+                  <Sparkles className="h-6 w-6" />
+                  <motion.div
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
+                    animate={{ scale: [0, 1, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                  />
+                </motion.div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold">AI Health Guide</h2>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Brain className="h-4 w-4 text-primary-foreground/60" />
+                    </motion.div>
+                  </div>
+                  <div className="flex items-center gap-2 text-primary-foreground/80 text-sm">
+                    <Heart className="h-3 w-3" />
+                    <span>Your personal wellness assistant</span>
+                  </div>
+                </div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.3, type: "spring" }}
+                >
+                  <Badge variant="secondary" className="bg-gradient-to-r from-yellow-400/20 to-orange-400/20 text-primary-foreground border-white/30 text-xs font-semibold backdrop-blur-sm">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Beta
+                  </Badge>
+                </motion.div>
+              </div>
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 90 }}
+                whileTap={{ scale: 0.9 }}
               >
-                <Send className="h-4 w-4" />
-              </Button> */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={onClose}
+                  className="text-primary-foreground hover:bg-white/20 rounded-full h-10 w-10 p-0 transition-all duration-200"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </motion.div>
+            </div>
+          </div>
+          
+          {/* Chat Messages Area */}
+          <div 
+            ref={scrollAreaRef}
+            className="flex-1 overflow-y-auto px-6 py-4 space-y-4 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: 'hsl(var(--muted-foreground) / 0.2) transparent'
+            }}
+          >
+            {messages.length === 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-12"
+              >
+                <motion.div 
+                  className="relative w-20 h-20 mx-auto mb-6"
+                  animate={{ 
+                    scale: [1, 1.05, 1],
+                  }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-purple-500/20 to-pink-500/20 rounded-full blur-xl"></div>
+                  <div className="relative w-full h-full bg-gradient-to-br from-primary/30 to-primary/10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/20">
+                    <Bot className="h-10 w-10 text-primary" />
+                  </div>
+                  <motion.div
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full flex items-center justify-center"
+                    animate={{ scale: [0.8, 1.2, 0.8] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <CheckCircle2 className="h-3 w-3 text-white" />
+                  </motion.div>
+                </motion.div>
+                
+                <motion.h3 
+                  className="text-xl font-bold mb-3 bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  Welcome to AI Health Guide
+                </motion.h3>
+                
+                <motion.p 
+                  className="text-muted-foreground text-sm max-w-md mx-auto leading-relaxed mb-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
+                  Your intelligent wellness companion for menstrual health, nutrition guidance, and emotional support.
+                </motion.p>
 
-              {/* <Button 
-  onClick={handleSendMessage} 
-  disabled={isLoading || !inputMessage.trim() || !user}
-  size="sm"
->
-  <Send className="h-4 w-4" />
-</Button> */}
-
-            {/* </div> */}
-          {/* </div>
-           */}
-
-
- {/* <div className="border-t p-3 bg-gradient-to-r from-pink-50 to-rose-100 shadow-inner">
-  <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-md">
-    <Input
-      value={inputMessage}
-      onChange={(e) => setInputMessage(e.target.value)}
-      onKeyPress={handleKeyPress}
-      placeholder="Ask about your menstrual health..."
-      disabled={isLoading || !user}
-      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm placeholder:text-muted-foreground"
-    />
-    <Button 
-      onClick={handleSendMessage} 
-      disabled={isLoading || !inputMessage.trim() || !user}
-      size="icon"
-      className="bg-rose-500 hover:bg-rose-600 text-white shadow-md"
-    >
-      <Send className="h-4 w-4" />
-    </Button>
-  </div>
-</div> */}
-
-
-{/* <div className="border-t p-3 bg-gradient-to-br from-pink-100 via-rose-200 to-fuchsia-100 shadow-inner backdrop-blur-sm">
-  <div className="flex items-center gap-3 bg-white/60 backdrop-blur-md rounded-2xl px-4 py-2 shadow-lg border border-white/30 ring-1 ring-rose-100">
-    <Input
-      value={inputMessage}
-      onChange={(e) => setInputMessage(e.target.value)}
-      onKeyPress={handleKeyPress}
-      placeholder="Ask about your menstrual health..."
-      disabled={isLoading || !user}
-      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm text-rose-900 placeholder:text-rose-400"
-    />
-    <Button 
-      onClick={handleSendMessage} 
-      disabled={isLoading || !inputMessage.trim() || !user}
-      size="icon"
-      className="bg-gradient-to-tr from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-200"
-    >
-      <Send className="h-4 w-4" />
-    </Button>
-  </div>
-</div> */}
-
-
-<div className="border-t p-3 bg-gradient-to-br from-pink-100 via-rose-200 to-fuchsia-100 shadow-inner backdrop-blur-md">
-  <div className="flex items-center gap-3 bg-white/70 backdrop-blur-sm rounded-2xl px-5 py-3 shadow-xl border border-white/30 ring-1 ring-rose-200">
-    <Input
-      value={inputMessage}
-      onChange={(e) => setInputMessage(e.target.value)}
-      onKeyPress={handleKeyPress}
-      placeholder="Ask about your menstrual health..."
-      disabled={isLoading || !user}
-      className="flex-1 border-none focus:ring-0 focus-visible:ring-0 shadow-none bg-transparent text-sm text-rose-900 placeholder:text-rose-400 placeholder:italic"
-    />
-    <Button 
-      onClick={handleSendMessage} 
-      disabled={isLoading || !inputMessage.trim() || !user}
-      size="icon"
-      className="bg-gradient-to-tr from-rose-500 via-pink-500 to-fuchsia-500 hover:from-rose-600 hover:to-fuchsia-600 text-white shadow-lg shadow-fuchsia-200 transition-all duration-200 ease-in-out"
-    >
-      <Send className="h-4 w-4" />
-    </Button>
-  </div>
-</div>
-
-
-
-        </CardContent>
-      </Card>
-    </div>
+                {/* Feature highlights */}
+                <motion.div 
+                  className="grid grid-cols-2 gap-4 max-w-sm mx-auto text-xs"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                >
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Activity className="h-3 w-3 text-green-500" />
+                    <span>Symptom tracking</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Heart className="h-3 w-3 text-red-500" />
+                    <span>Wellness tips</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Brain className="h-3 w-3 text-purple-500" />
+                    <span>Mood support</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Shield className="h-3 w-3 text-blue-500" />
+                    <span>Private & secure</span>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+            
+            <AnimatePresence>
+              {messages.map((msg, index) => (
+                <motion.div 
+                  key={msg.id}
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  className="space-y-4"
+                >
+                  {/* User message */}
+                  <div className="flex justify-end">
+                    <div className="max-w-[80%] relative group">
+                      <motion.div 
+                        className="relative bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground rounded-2xl rounded-br-md p-4 shadow-lg"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        {/* Animated border */}
+                        <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-pink-400 via-pink-500 to-rose-500 rounded-r-full">
+                          <motion.div 
+                            className="w-full h-2 bg-white/50 rounded-full"
+                            animate={{ y: [0, '100%', 0] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                          />
+                        </div>
+                        
+                        {/* Message content */}
+                        <p className="text-sm leading-relaxed relative z-10">{msg.message}</p>
+                        
+                        {/* Hover effect */}
+                        <motion.div 
+                          className="absolute inset-0 bg-white/10 rounded-2xl rounded-br-md opacity-0 group-hover:opacity-100 transition-opacity"
+                          initial={false}
+                        />
+                      </motion.div>
+                      
+                      <div className="flex items-center gap-2 justify-end mt-2">
+                        <motion.div 
+                          className="w-6 h-6 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center"
+                          whileHover={{ scale: 1.2, rotate: 15 }}
+                        >
+                          <User className="h-3 w-3 text-primary" />
+                        </motion.div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* AI response */}
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] relative group">
+                      <motion.div 
+                        className="relative bg-gradient-to-br from-muted/80 via-muted/60 to-muted/40 backdrop-blur-sm rounded-2xl rounded-bl-md p-4 shadow-sm border border-white/10"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        {/* Animated gradient border */}
+                        <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full overflow-hidden">
+                          <motion.div 
+                            className="w-full h-full bg-gradient-to-b from-purple-400 via-violet-500 to-purple-600"
+                            animate={{ 
+                              background: [
+                                "linear-gradient(to bottom, rgb(168 85 247), rgb(139 92 246), rgb(147 51 234))",
+                                "linear-gradient(to bottom, rgb(139 92 246), rgb(147 51 234), rgb(168 85 247))",
+                                "linear-gradient(to bottom, rgb(147 51 234), rgb(168 85 247), rgb(139 92 246))"
+                              ]
+                            }}
+                            transition={{ duration: 3, repeat: Infinity }}
+                          />
+                        </div>
+                        
+                        {/* AI thinking indicator */}
+                        <motion.div 
+                          className="absolute top-2 right-3 w-2 h-2 bg-green-400 rounded-full"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                        
+                        <p className="text-sm leading-relaxed text-foreground relative z-10">{msg.response}</p>
+                        
+                        {/* Hover glow effect */}
+                        <motion.div 
+                          className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-violet-500/5 rounded-2xl rounded-bl-md opacity-0 group-hover:opacity-100 transition-opacity"
+                          initial={false}
+                        />
+                      </motion.div>
+                      
+                      <div className="flex items-center gap-2 mt-2">
+                        <motion.div 
+                          className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-purple-500/20"
+                          animate={{ rotate: [0, 360] }}
+                          transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                        >
+                          <Bot className="h-3 w-3 text-purple-600" />
+                        </motion.div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Sparkles className="h-3 w-3 text-purple-500" />
+                          <span>AI Health Guide</span>
+                          <motion.div 
+                            className="w-1 h-1 bg-green-400 rounded-full"
+                            animate={{ scale: [1, 1.5, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            
+            {isLoading && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="flex justify-start"
+              >
+                <div className="max-w-[80%] relative">
+                  <motion.div 
+                    className="bg-gradient-to-br from-muted/80 to-muted/60 backdrop-blur-sm rounded-2xl rounded-bl-md p-4 shadow-sm border border-white/10 relative overflow-hidden"
+                    animate={{ 
+                      boxShadow: [
+                        "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                        "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                        "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                      ]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    {/* Animated gradient border */}
+                    <motion.div 
+                      className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full"
+                      animate={{ 
+                        background: [
+                          "linear-gradient(to bottom, rgb(168 85 247), rgb(139 92 246))",
+                          "linear-gradient(to bottom, rgb(139 92 246), rgb(147 51 234))",
+                          "linear-gradient(to bottom, rgb(147 51 234), rgb(168 85 247))"
+                        ]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                    
+                    {/* Shimmer effect */}
+                    <motion.div 
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+                      animate={{ x: [-100, 200] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                    
+                    <div className="flex items-center gap-3 relative z-10">
+                      <motion.div 
+                        className="w-2.5 h-2.5 bg-gradient-to-r from-purple-400 to-violet-500 rounded-full"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 0.8, repeat: Infinity, delay: 0 }}
+                      />
+                      <motion.div 
+                        className="w-2.5 h-2.5 bg-gradient-to-r from-violet-400 to-purple-500 rounded-full"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 0.8, repeat: Infinity, delay: 0.2 }}
+                      />
+                      <motion.div 
+                        className="w-2.5 h-2.5 bg-gradient-to-r from-purple-500 to-violet-400 rounded-full"
+                        animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 0.8, repeat: Infinity, delay: 0.4 }}
+                      />
+                      <motion.span 
+                        className="text-xs text-muted-foreground ml-2"
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                      >
+                        AI is analyzing your question...
+                      </motion.span>
+                    </div>
+                  </motion.div>
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <motion.div 
+                      className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-purple-500/20"
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    >
+                      <Bot className="h-3 w-3 text-purple-600" />
+                    </motion.div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <Brain className="h-3 w-3 text-purple-500" />
+                      </motion.div>
+                      <span>Processing...</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
+          
+          {/* Enhanced Sticky Input Bar */}
+          <div className="relative bg-gradient-to-r from-muted/60 via-muted/40 to-muted/60 border-t border-border/30 p-6 flex-shrink-0 backdrop-blur-sm">
+            {/* Subtle animation background */}
+            <motion.div 
+              className="absolute inset-0 bg-gradient-to-r from-primary/5 via-transparent to-primary/5"
+              animate={{ 
+                background: [
+                  "linear-gradient(to right, rgba(var(--primary), 0.05), transparent, rgba(var(--primary), 0.05))",
+                  "linear-gradient(to right, transparent, rgba(var(--primary), 0.08), transparent)",
+                  "linear-gradient(to right, rgba(var(--primary), 0.05), transparent, rgba(var(--primary), 0.05))"
+                ]
+              }}
+              transition={{ duration: 4, repeat: Infinity }}
+            />
+            
+            <div className="relative flex gap-3">
+              {/* Enhanced Input */}
+              <div className="flex-1 relative">
+                <motion.div
+                  animate={inputMessage ? { scale: 1.02 } : { scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <Input
+                    value={inputMessage}
+                    onChange={(e) => setInputMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Ask me anything about your menstrual health..."
+                    disabled={isLoading}
+                    className="rounded-2xl border-2 border-muted-foreground/20 bg-background/90 backdrop-blur-md focus:ring-2 focus:ring-primary/30 focus:border-primary/50 text-base py-4 px-5 transition-all duration-200 placeholder:text-muted-foreground/60"
+                  />
+                </motion.div>
+                
+                {/* Input indicators */}
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {inputMessage && (
+                    <motion.div
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="w-2 h-2 bg-green-400 rounded-full"
+                    />
+                  )}
+                  <MessageCircle className="h-4 w-4 text-muted-foreground/40" />
+                </div>
+              </div>
+              
+              {/* Enhanced Send Button */}
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative"
+              >
+                <Button 
+                  onClick={handleSendMessage} 
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="relative rounded-2xl px-6 py-4 bg-gradient-to-r from-primary via-primary/95 to-primary/90 hover:from-primary/95 hover:via-primary hover:to-primary shadow-xl disabled:opacity-50 border border-white/20 overflow-hidden group"
+                >
+                  {/* Button glow effect */}
+                  <motion.div 
+                    className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/30 to-white/20 -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-700"
+                    initial={false}
+                  />
+                  
+                  <motion.div
+                    animate={isLoading ? { rotate: 360 } : { rotate: 0 }}
+                    transition={isLoading ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+                  >
+                    {isLoading ? (
+                      <Sparkles className="h-4 w-4" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </motion.div>
+                </Button>
+                
+                {/* Button hover particles */}
+                {inputMessage.trim() && (
+                  <motion.div
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
+                    animate={{ scale: [0, 1, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+            </div>
+            
+            {/* Quick suggestions */}
+            {messages.length === 0 && !inputMessage && (
+              <motion.div 
+                className="mt-4 flex gap-2 flex-wrap"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1 }}
+              >
+                {["Help with cramps", "Diet tips", "Mood support"].map((suggestion, index) => (
+                  <motion.button
+                    key={suggestion}
+                    onClick={() => setInputMessage(suggestion)}
+                    className="text-xs px-3 py-1.5 bg-muted/60 hover:bg-muted/80 rounded-full border border-border/30 text-muted-foreground hover:text-foreground transition-all duration-200"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1.2 + index * 0.1 }}
+                  >
+                    {suggestion}
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 

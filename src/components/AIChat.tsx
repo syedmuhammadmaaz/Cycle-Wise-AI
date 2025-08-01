@@ -13,8 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 
-
-
 interface AIChatProps {
   onClose: () => void;
 }
@@ -112,7 +110,7 @@ const generateAIResponse = async (
     const userMessage = inputMessage.trim();
     setInputMessage('');
 // const aiResponse = generateAIResponse(userMessage);
-  // 🧠 Pull events from global state
+  //  Pull events from global state
   const calendarEvents = useCalendarStore.getState().events;
 
   // 👇 Pass calendar events with the message

@@ -86,7 +86,7 @@ export const useCalendarSync = () => {
     try {
       setIsSyncing(true)
 
-      console.log('Now Syncing calendar...')
+      // console.log('Now Syncing calendar...')
       
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {

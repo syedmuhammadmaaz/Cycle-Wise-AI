@@ -174,6 +174,10 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
   const events: GoogleCalendarEvent[] = calendarData.items || []
   console.log(` Total events fetched from Google Calendar: ${events.length}`)
 
+  console.log(`_________________________calendarData (RAW)________________`)
+  console.log(events)
+  console.log(`___________________________________________________________`)
+
   //  Cycle filtering
   const cycleKeywords = [
     'period', 'menstruation', 'cycle', 'flow', 'pms', 'menstrual',
@@ -188,6 +192,10 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
     if (match) console.log(`[Match] ➕ Matched summary: "${summary}"`)
     return match
   })
+
+  console.log(`_________________________calendarData (Filtered)________________`)
+  console.log(cycleEvents)
+  console.log(`___________________________________________________________`)
 
   console.log(` Cycle-related events found: ${cycleEvents.length}`)
 
@@ -282,5 +290,7 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
     cycleEvents: cycleEvents.length,
     syncedCount,
     existingCount,
+    rawEvents: events,
+    filteredEvents: cycleEvents
   }
 }

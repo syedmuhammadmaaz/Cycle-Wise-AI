@@ -18,6 +18,8 @@ export const CalendarConnection = ({ isConnected, onConnectionChange }: Calendar
   }
 
   const handleSync = async () => {
+    console.log('Syncing calendar...')
+    console.log(await syncCalendar())
     await syncCalendar()
     onConnectionChange?.()
   }

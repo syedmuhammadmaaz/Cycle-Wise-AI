@@ -85,6 +85,8 @@ export const useCalendarSync = () => {
   const syncCalendar = async () => {
     try {
       setIsSyncing(true)
+
+      console.log('Now Syncing calendar...')
       
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) {
@@ -92,14 +94,23 @@ export const useCalendarSync = () => {
       }
 
       // const response = await fetch(`https://uiuecyakzpooeerejaye.supabase.co/functions/v1/calendar-sync`, {
-      const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
-        method: 'POST',
+      // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Authorization': `Bearer ${session.access_token}`,
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ user_id: session.user.id }),
+      // })
+      const response = await fetch(`https://automations.aiagents.co.id/webhook/cyclewise/calendar/sync?userId=${session.user.id}`, {
+        method: 'GET',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user_id: session.user.id }),
+        }
       })
+
+      
 
       if (!response.ok) {
         const errorData = await response.json()
@@ -108,9 +119,11 @@ export const useCalendarSync = () => {
 
       const result = await response.json()
       
+      console.log(result)
+      
       toast({
         title: "Calendar Synced",
-        description: `Found ${result.result.syncedCount} new cycle events`,
+        description: `Calendar synced successfully`,
       })
 
       return result

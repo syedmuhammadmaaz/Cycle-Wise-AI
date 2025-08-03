@@ -25,6 +25,23 @@ interface ChatMessage {
   created_at: string;
 }
 
+function formatTime(raw: string) {
+  let iso = raw.replace(' ', 'T');
+  if (!/Z$|[+-]\d{2}:\d{2}$/.test(iso)) {
+    iso = iso + 'Z';
+  }
+
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) {
+    return '—'; 
+  }
+  return d.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+
 const AIChat = ({ onClose }: AIChatProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -32,7 +49,6 @@ const AIChat = ({ onClose }: AIChatProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-
 
 
   useEffect(() => {
@@ -399,9 +415,10 @@ const generateAIResponse = async (
                         </motion.div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
-                          <span>
+                          {/* <span>
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          </span> */}
+                          <span>{formatTime(msg.created_at)}</span>
                         </div>
                       </div>
                     </div>

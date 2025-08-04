@@ -105,7 +105,8 @@ const CycleForm = ({ onClose, onCycleAdded }: CycleFormProps) => {
                   id="cycleLength"
                   name="cycleLength"
                   type="number"
-                  min="20"
+                  // min="20"
+                  min="5"
                   max="40"
                   placeholder="28"
                 />

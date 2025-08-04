@@ -112,7 +112,7 @@ const generateAIResponse = async (
 
     const data = await res.json();
     console.log(data.content);
-    return data.content || "Sorry, I couldn't understand your question.";
+    return data.content || "Sorry, I could not understand your question.";
   } catch (err) {
     console.error('Error fetching AI response from n8n:', err);
     return "There was an error contacting the AI service.";

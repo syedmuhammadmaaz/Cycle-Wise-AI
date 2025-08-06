@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Heart, Calendar, MessageCircle, Shield, Sparkles } from 'lucide-react';
+import { Heart, Calendar, MessageCircle, Shield, Sparkles, ArrowRight, Star, Zap, User, LogIn  } from 'lucide-react';
 
 const Index = () => {
   return (

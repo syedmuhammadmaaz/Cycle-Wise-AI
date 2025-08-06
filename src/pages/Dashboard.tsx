@@ -13,10 +13,14 @@ import {
   MessageCircle, 
   Settings, 
   Crown,
-  Plus
+  Plus,
+    TrendingUp,
+  Activity,
+  Users
 } from 'lucide-react';
 import CycleForm from '@/components/CycleForm';
 import AIChat from '@/components/AIChat';
+import ProfileSettings from '@/components/ProfileSettings';
 import { CalendarConnection } from '@/components/CalendarConnection';
 
 import { useCalendarStore } from '@/store/calendarStore';
@@ -46,6 +50,7 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCycleForm, setShowCycleForm] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+   const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const { events, setEvents } = useCalendarStore();
 
@@ -282,9 +287,13 @@ const Dashboard = () => {
                   Chat with AI Health Guide
                 </Button>
 
-                <Button variant="outline" className="w-full justify-start">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start glass hover-lift group"
+                  onClick={() => setShowProfileSettings(true)}
+                >
+                  <Settings className="h-4 w-4 mr-3 text-primary group-hover:scale-110 transition-transform" />
+                  Settings & Preferences
                 </Button>
 
                 {profile?.subscription_status === 'free' && (
@@ -325,6 +334,14 @@ const Dashboard = () => {
       {showAIChat && (
         <AIChat onClose={() => setShowAIChat(false)} />
       )}
+
+      {showProfileSettings && (
+        <ProfileSettings 
+          isOpen={showProfileSettings}
+          onClose={() => setShowProfileSettings(false)} 
+        />
+      )}
+      
     </div>
   );
 };

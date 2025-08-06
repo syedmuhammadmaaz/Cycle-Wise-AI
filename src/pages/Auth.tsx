@@ -246,7 +246,7 @@ const Auth = () => {
               </div>
             </div>
             <CardTitle className="text-3xl font-bold gradient-primary bg-clip-text text-transparent mb-3">
-              Welcome to Women Health Wise AI 
+              Welcome to Women CycleWise
             </CardTitle>
             <CardDescription className="text-lg text-muted-foreground">
               Your personal cycle companion

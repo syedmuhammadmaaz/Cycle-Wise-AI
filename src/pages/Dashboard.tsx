@@ -120,7 +120,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Heart className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-semibold">Health Wise AI Tracker</h1>
+            <h1 className="text-xl font-semibold">CycleWise</h1>
           </div>
           <div className="flex items-center gap-4">
             {profile?.subscription_status === 'premium' && (

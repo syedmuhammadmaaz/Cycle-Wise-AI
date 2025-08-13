@@ -24,7 +24,8 @@ const Index = () => {
               <Link to="/auth">Get Started</Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link to="/auth">Sign In</Link>
+              {/* <Link to="/auth">Sign In</Link> */}
+              <Link to="/auth">Dashboard Section</Link>
             </Button>
           </div>
         </div>

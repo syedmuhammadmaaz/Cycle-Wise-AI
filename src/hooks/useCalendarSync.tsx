@@ -82,63 +82,136 @@ export const useCalendarSync = () => {
     }
   }
 
-  const syncCalendar = async () => {
+  // const syncCalendar = async () => {
+  //   try {
+  //     setIsSyncing(true)
+
+  //     console.log('Now Syncing calendar...')
+      
+  //     const { data: { session } } = await supabase.auth.getSession()
+  //     if (!session) {
+  //       throw new Error('Not authenticated')
+  //     }
+
+  //     // const response = await fetch(`https://uiuecyakzpooeerejaye.supabase.co/functions/v1/calendar-sync`, {
+  //     // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+  //     //   method: 'POST',
+  //     //   headers: {
+  //     //     'Authorization': `Bearer ${session.access_token}`,
+  //     //     'Content-Type': 'application/json',
+  //     //   },
+  //     //   body: JSON.stringify({ user_id: session.user.id }),
+  //     // })
+  //     const response = await fetch(`https://automations.aiagents.co.id/webhook/cyclewise/calendar/sync?userId=${session.user.id}`, {
+  //       method: 'GET',
+  //       headers: {
+  //         'Authorization': `Bearer ${session.access_token}`,
+  //         'Content-Type': 'application/json',
+  //       }
+  //     })
+
+      
+
+  //     if (!response.ok) {
+  //       const errorData = await response.json()
+  //       throw new Error(errorData.error || 'Failed to sync calendar')
+  //     }
+
+  //     const result = await response.json()
+      
+  //     console.log(result)
+      
+  //     toast({
+  //       title: "Calendar Synced",
+  //       description: `Calendar synced successfully`,
+  //     })
+
+  //     return result
+  //   } catch (error) {
+  //     console.error('Calendar sync error:', error)
+  //     toast({
+  //       title: "Sync Failed",
+  //       description: error instanceof Error ? error.message : "Failed to sync calendar",
+  //       variant: "destructive",
+  //     })
+  //     throw error
+  //   } finally {
+  //     setIsSyncing(false)
+  //   }
+  // }
+
+const syncCalendar = async () => {
     try {
-      setIsSyncing(true)
-
-      console.log('Now Syncing calendar...')
-      
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        throw new Error('Not authenticated')
-      }
-
-      // const response = await fetch(`https://uiuecyakzpooeerejaye.supabase.co/functions/v1/calendar-sync`, {
-      // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${session.access_token}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ user_id: session.user.id }),
-      // })
-      const response = await fetch(`https://automations.aiagents.co.id/webhook/cyclewise/calendar/sync?userId=${session.user.id}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json',
+        setIsSyncing(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error('Not authenticated');
         }
-      })
 
-      
+        const response = await fetch(`https://automations.aiagents.co.id/webhook/cyclewise/calendar/sync?userId=${session.user.id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+            }
+        });
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to sync calendar')
-      }
+        // Log the raw response for debugging
+        const responseText = await response.text(); 
+        console.log('Response Text:', responseText); // Log the complete response
 
-      const result = await response.json()
-      
-      console.log(result)
-      
-      toast({
-        title: "Calendar Synced",
-        description: `Calendar synced successfully`,
-      })
+        if (!response.ok) {
+            console.error(`Error response status: ${response.status}`);
+            console.error(`Error response text: ${responseText}`);
+            throw new Error(`Failed to sync calendar. HTTP status: ${response.status}`);
+        }
 
-      return result
+        // Try to parse JSON response
+        try {
+            // Check if responseText is empty
+            if (!responseText) {
+                toast({
+                    title: "No Events Found",
+                    description: "There are no events in your calendar to sync.",
+                    variant: "info",
+                });
+                return; // Exit early if no events are found
+            }
+
+            const result = JSON.parse(responseText); // Attempt to parse JSON
+            console.log(result); // Log the parsed result
+
+            // Handle case when the result has no relevant data
+            if (!result || !result.events || result.events.length === 0) {
+                toast({
+                    title: "No Events Found",
+                    description: "Your calendar has no events to sync.",
+                    variant: "info",
+                });
+                return; // Exit early if no events are found
+            }
+
+            toast({
+                title: "Calendar Synced",
+                description: `Calendar synced successfully with ${result.events.length} events.`,
+            });
+            return result;
+        } catch (jsonError) {
+            console.error("Error parsing JSON:", jsonError); 
+            throw new Error('Response is not in JSON format');
+        }
     } catch (error) {
-      console.error('Calendar sync error:', error)
-      toast({
-        title: "Sync Failed",
-        description: error instanceof Error ? error.message : "Failed to sync calendar",
-        variant: "destructive",
-      })
-      throw error
+        console.error('Calendar sync error:', error);
+        toast({
+            title: "Sync Failed",
+            description: error instanceof Error ? error.message : "Failed to sync calendar",
+            variant: "destructive",
+        });
+        throw error;
     } finally {
-      setIsSyncing(false)
+        setIsSyncing(false);
     }
-  }
+};
 
   const disconnectCalendar = async () => {
     try {

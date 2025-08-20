@@ -82,7 +82,12 @@ const Dashboard = () => {
       console.error('Error fetching profile:', error);
     }
   };
-
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() + userTimezoneOffset);
+  return localDate.toLocaleDateString();
+};
   const fetchCycles = async () => {
     try {
       const { data, error } = await supabase
@@ -215,8 +220,8 @@ const Dashboard = () => {
                       <div key={cycle.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
                           <div className="font-medium">
-                            {new Date(cycle.start_date).toLocaleDateString()}
-                            {cycle.end_date && ` - ${new Date(cycle.end_date).toLocaleDateString()}`}
+                            {formatDate(cycle.start_date)}
+{cycle.end_date && ` - ${formatDate(cycle.end_date)}`}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {cycle.cycle_length && `${cycle.cycle_length} day cycle`}

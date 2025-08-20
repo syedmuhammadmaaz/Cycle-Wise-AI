@@ -78,7 +78,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
-
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('google_refresh_token')

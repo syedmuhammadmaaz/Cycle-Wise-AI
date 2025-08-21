@@ -93,7 +93,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
-
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('google_refresh_token, outlook_refresh_token, calendar_provider, google_calendar_connected, outlook_calendar_connected')

@@ -57,7 +57,7 @@ const CycleForm = ({ onClose, onCycleAdded }: CycleFormProps) => {
       setIsLoading(false);
     }
   };
-
+const today = new Date().toISOString().split('T')[0];
   const toggleSymptom = (symptom: string) => {
     setSelectedSymptoms(prev => 
       prev.includes(symptom) 
@@ -86,6 +86,7 @@ const CycleForm = ({ onClose, onCycleAdded }: CycleFormProps) => {
                 name="startDate"
                 type="date"
                 required
+                max={today}
               />
             </div>
 
@@ -95,6 +96,7 @@ const CycleForm = ({ onClose, onCycleAdded }: CycleFormProps) => {
                 id="endDate"
                 name="endDate"
                 type="date"
+                max={today}
               />
             </div>
 

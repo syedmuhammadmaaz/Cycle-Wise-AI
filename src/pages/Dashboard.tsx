@@ -31,6 +31,8 @@ interface Profile {
   full_name: string;
   subscription_status: string;
   google_calendar_connected: boolean;
+  outlook_calendar_connected: boolean;
+  calendar_provider: string;
 }
 
 interface Cycle {
@@ -306,10 +308,11 @@ const Dashboard = () => {
             </Card>
 
             <CalendarConnection 
-              isConnected={profile?.google_calendar_connected || false}
+              googleConnected={profile?.google_calendar_connected || false}
+              outlookConnected={profile?.outlook_calendar_connected || false}
               onConnectionChange={() => {
                 fetchProfile();
-                loadEvents();
+                loadEvents(); // re-load highlights
               }}
             />
           </div>

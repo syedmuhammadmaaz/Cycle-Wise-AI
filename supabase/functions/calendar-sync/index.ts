@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface GoogleCalendarEvent {
+interface CalendarEvent {
   id: string
   summary: string
   start: {
@@ -20,6 +20,12 @@ interface GoogleCalendarEvent {
 }
 
 interface GoogleTokenResponse {
+  access_token: string
+  expires_in: number
+  token_type: string
+}
+
+interface MicrosoftTokenResponse {
   access_token: string
   expires_in: number
   token_type: string
@@ -48,9 +54,8 @@ Deno.serve(async (req) => {
 
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, google_refresh_token')
-        .eq('google_calendar_connected', true)
-        .not('google_refresh_token', 'is', null)
+        .select('user_id, google_refresh_token, outlook_refresh_token, calendar_provider, google_calendar_connected, outlook_calendar_connected')
+        .or('google_calendar_connected.eq.true,outlook_calendar_connected.eq.true')
 
       if (profilesError) {
         console.error(' Error fetching profiles:', profilesError)
@@ -65,8 +70,18 @@ Deno.serve(async (req) => {
       for (const profile of profiles || []) {
         try {
           console.log(` Syncing calendar for user: ${profile.user_id}`)
-          const result = await syncUserCalendar(supabase, profile.user_id, profile.google_refresh_token)
-          results.push({ user_id: profile.user_id, success: true, result })
+          
+          // Sync Google Calendar if connected and has refresh token
+          if (profile.google_refresh_token && profile.google_calendar_connected) {
+            const googleResult = await syncUserCalendar(supabase, profile.user_id, profile.google_refresh_token, 'google')
+            results.push({ user_id: profile.user_id, provider: 'google', success: true, result: googleResult })
+          }
+          
+          // Sync Outlook Calendar if connected and has refresh token
+          if (profile.outlook_refresh_token && profile.outlook_calendar_connected) {
+            const outlookResult = await syncUserCalendar(supabase, profile.user_id, profile.outlook_refresh_token, 'outlook')
+            results.push({ user_id: profile.user_id, provider: 'outlook', success: true, result: outlookResult })
+          }
         } catch (error) {
           console.error(` Sync failed for user ${profile.user_id}:`, error)
           results.push({ user_id: profile.user_id, success: false, error: error.message })
@@ -81,20 +96,41 @@ Deno.serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('google_refresh_token')
+      .select('google_refresh_token, outlook_refresh_token, calendar_provider, google_calendar_connected, outlook_calendar_connected')
       .eq('user_id', user_id)
-      .eq('google_calendar_connected', true)
       .single()
 
-    if (profileError || !profile?.google_refresh_token) {
-      console.error(' User not found or not connected:', profileError)
-      return new Response(JSON.stringify({ error: 'User not connected to Google Calendar' }), {
+    if (profileError || !profile) {
+      console.error(' User not found:', profileError)
+      return new Response(JSON.stringify({ error: 'User not found' }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    const result = await syncUserCalendar(supabase, user_id, profile.google_refresh_token)
+    if (!profile.google_calendar_connected && !profile.outlook_calendar_connected) {
+      console.error(' User not connected to any calendar')
+      return new Response(JSON.stringify({ error: 'User not connected to any calendar' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Determine which provider to sync based on request or available tokens
+    const body = await req.json().catch(() => ({}))
+    const requestedProvider = body.provider || 'google'
+    
+    let result
+    if (requestedProvider === 'outlook' && profile.outlook_refresh_token && profile.outlook_calendar_connected) {
+      result = await syncUserCalendar(supabase, user_id, profile.outlook_refresh_token, 'outlook')
+    } else if (profile.google_refresh_token && profile.google_calendar_connected) {
+      result = await syncUserCalendar(supabase, user_id, profile.google_refresh_token, 'google')
+    } else {
+      return new Response(JSON.stringify({ error: `Requested provider ${requestedProvider} not available or not connected` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
 
     console.log(` Calendar sync completed for user ${user_id}`)
     return new Response(JSON.stringify({
@@ -116,63 +152,125 @@ Deno.serve(async (req) => {
   }
 })
 
-async function syncUserCalendar(supabase: any, user_id: string, refresh_token: string) {
-  console.log(` [syncUserCalendar] Start calendar sync for user: ${user_id}`)
+async function syncUserCalendar(supabase: any, user_id: string, refresh_token: string, provider: 'google' | 'outlook') {
+  console.log(` [syncUserCalendar] Start ${provider} calendar sync for user: ${user_id}`)
 
-  //  Refresh token
-  console.log(` Refreshing Google access token for user: ${user_id}`)
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
-      client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
-      refresh_token: refresh_token,
-      grant_type: 'refresh_token',
-    }),
-  })
+  let accessToken: string
+  let calendarResponse: Response
 
-  if (!tokenResponse.ok) {
-    console.error(' Failed to refresh access token')
-    throw new Error('Failed to refresh access token')
+  if (provider === 'google') {
+    // Refresh Google access token
+    console.log(` Refreshing Google access token for user: ${user_id}`)
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('GOOGLE_CLIENT_ID') ?? '',
+        client_secret: Deno.env.get('GOOGLE_CLIENT_SECRET') ?? '',
+        refresh_token: refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (!tokenResponse.ok) {
+      console.error(' Failed to refresh Google access token')
+      throw new Error('Failed to refresh Google access token')
+    }
+
+    const tokens: GoogleTokenResponse = await tokenResponse.json()
+    accessToken = tokens.access_token
+    console.log(` Google access token refreshed for user: ${user_id}`)
+
+    // Fetch Google Calendar events
+    const timeMin = new Date()
+    timeMin.setMonth(timeMin.getMonth() - 6)
+    const timeMax = new Date()
+    timeMax.setMonth(timeMax.getMonth() + 6)
+
+    console.log(` Fetching Google events between: ${timeMin.toISOString()} and ${timeMax.toISOString()}`)
+
+    calendarResponse = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
+      new URLSearchParams({
+        timeMin: timeMin.toISOString(),
+        timeMax: timeMax.toISOString(),
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: '500',
+      }),
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }
+    )
+  } else {
+    // Refresh Microsoft access token
+    console.log(` Refreshing Microsoft access token for user: ${user_id}`)
+    const tokenResponse = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: Deno.env.get('MICROSOFT_CLIENT_ID') ?? '',
+        client_secret: Deno.env.get('MICROSOFT_CLIENT_SECRET') ?? '',
+        refresh_token: refresh_token,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (!tokenResponse.ok) {
+      console.error(' Failed to refresh Microsoft access token')
+      throw new Error('Failed to refresh Microsoft access token')
+    }
+
+    const tokens: MicrosoftTokenResponse = await tokenResponse.json()
+    accessToken = tokens.access_token
+    console.log(` Microsoft access token refreshed for user: ${user_id}`)
+
+    // Fetch Outlook Calendar events using Microsoft Graph API
+    const timeMin = new Date()
+    timeMin.setMonth(timeMin.getMonth() - 6)
+    const timeMax = new Date()
+    timeMax.setMonth(timeMax.getMonth() + 6)
+
+    console.log(` Fetching Outlook events between: ${timeMin.toISOString()} and ${timeMax.toISOString()}`)
+
+    calendarResponse = await fetch(
+      `https://graph.microsoft.com/v1.0/me/calendarView?` +
+      new URLSearchParams({
+        startDateTime: timeMin.toISOString(),
+        endDateTime: timeMax.toISOString(),
+        $orderby: 'start/dateTime',
+        $top: '500',
+      }),
+      {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Prefer': 'outlook.timezone="UTC"',
+        },
+      }
+    )
   }
 
-  const tokens: GoogleTokenResponse = await tokenResponse.json()
-  console.log(` Access token refreshed for user: ${user_id}`)
-
-  const timeMin = new Date()
-  timeMin.setMonth(timeMin.getMonth() - 6)
-  const timeMax = new Date()
-  timeMax.setMonth(timeMax.getMonth() + 6)
-
-  console.log(` Fetching events between: ${timeMin.toISOString()} and ${timeMax.toISOString()}`)
-
-  const calendarResponse = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events?` +
-    new URLSearchParams({
-      timeMin: timeMin.toISOString(),
-      timeMax: timeMax.toISOString(),
-      singleEvents: 'true',
-      orderBy: 'startTime',
-      maxResults: '500',
-    }),
-    {
-      headers: {
-        'Authorization': `Bearer ${tokens.access_token}`,
-      },
-    }
-  )
-
   if (!calendarResponse.ok) {
-    console.error(' Failed to fetch calendar events')
-    throw new Error('Failed to fetch calendar events')
+    console.error(` Failed to fetch ${provider} calendar events`)
+    throw new Error(`Failed to fetch ${provider} calendar events`)
   }
 
   const calendarData = await calendarResponse.json()
-  const events: GoogleCalendarEvent[] = calendarData.items || []
-  console.log(` Total events fetched from Google Calendar: ${events.length}`)
+  let events: CalendarEvent[] = []
+  
+  if (provider === 'google') {
+    events = calendarData.items || []
+    console.log(` Total events fetched from Google Calendar: ${events.length}`)
+  } else {
+    events = calendarData.value || []
+    console.log(` Total events fetched from Outlook Calendar: ${events.length}`)
+  }
 
   console.log(`_________________________calendarData (RAW)________________`)
   console.log(events)
@@ -205,13 +303,23 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
   for (const event of cycleEvents) {
     try {
       let startDate: string
-      if (event.start.date) {
-        startDate = event.start.date
-      } else if (event.start.dateTime) {
-        startDate = new Date(event.start.dateTime).toISOString().split('T')[0]
+      if (provider === 'google') {
+        if (event.start.date) {
+          startDate = event.start.date
+        } else if (event.start.dateTime) {
+          startDate = new Date(event.start.dateTime).toISOString().split('T')[0]
+        } else {
+          console.warn(`[ Skipped] No valid start date for Google event: ${event.id}`)
+          continue
+        }
       } else {
-        console.warn(`[ Skipped] No valid start date for event: ${event.id}`)
-        continue
+        // Outlook events use different structure
+        if (event.start.dateTime) {
+          startDate = new Date(event.start.dateTime).toISOString().split('T')[0]
+        } else {
+          console.warn(`[ Skipped] No valid start date for Outlook event: ${event.id}`)
+          continue
+        }
       }
 
       const { data: existingCycle } = await supabase
@@ -266,7 +374,7 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
             cycle_length,
             period_length,
             symptoms: symptoms.length > 0 ? symptoms : null,
-            notes: `Imported from Google Calendar: ${event.summary}`,
+            notes: `Imported from ${provider === 'google' ? 'Google' : 'Outlook'} Calendar: ${event.summary}`,
           })
 
         if (insertError) {
@@ -283,9 +391,10 @@ async function syncUserCalendar(supabase: any, user_id: string, refresh_token: s
     }
   }
 
-  console.log(` Summary for ${user_id} — Total Events: ${events.length}, Cycle Events: ${cycleEvents.length}, Synced: ${syncedCount}, Existing: ${existingCount}`)
+  console.log(` Summary for ${user_id} — ${provider} Total Events: ${events.length}, Cycle Events: ${cycleEvents.length}, Synced: ${syncedCount}, Existing: ${existingCount}`)
 
   return {
+    provider,
     totalEvents: events.length,
     cycleEvents: cycleEvents.length,
     syncedCount,

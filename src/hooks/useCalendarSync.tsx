@@ -3,13 +3,14 @@ import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
 export const useCalendarSync = () => {
-  const [isConnecting, setIsConnecting] = useState(false)
+  const [isConnectingGoogle, setIsConnectingGoogle] = useState(false)
+  const [isConnectingOutlook, setIsConnectingOutlook] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const { toast } = useToast()
 
   const connectGoogleCalendar = async () => {
     try {
-      setIsConnecting(true)
+      setIsConnectingGoogle(true)
       
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession()
@@ -19,7 +20,6 @@ export const useCalendarSync = () => {
 
       // Call our calendar-auth edge function to get the OAuth URL
       const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-auth`, {
-      // const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -49,11 +49,10 @@ export const useCalendarSync = () => {
       const checkClosed = setInterval(() => {
         if (popup.closed) {
           clearInterval(checkClosed)
-          setIsConnecting(false)
+          setIsConnectingGoogle(false)
           
-          // Refresh the page or update state to reflect the connection
           toast({
-            title: "Calendar Connected!",
+            title: "Google Calendar Connected!",
             description: "Your Google Calendar has been connected successfully.",
           })
           
@@ -67,16 +66,95 @@ export const useCalendarSync = () => {
         clearInterval(checkClosed)
         if (!popup.closed) {
           popup.close()
-          setIsConnecting(false)
+          setIsConnectingGoogle(false)
         }
       }, 300000)
 
     } catch (error) {
-      console.error('Calendar connection error:', error)
-      setIsConnecting(false)
+      console.error('Google Calendar connection error:', error)
+      setIsConnectingGoogle(false)
       toast({
         title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect calendar",
+        description: error instanceof Error ? error.message : "Failed to connect Google Calendar",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const connectOutlookCalendar = async () => {
+    try {
+      setIsConnectingOutlook(true)
+      
+      // Get the current session
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        throw new Error('Not authenticated')
+      }
+
+      // Call our outlook-auth edge function to get the OAuth URL
+      const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/outlook-auth`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        let message = 'Failed to initiate calendar connection'
+        try {
+          const errorData = await response.json()
+          if (errorData?.error) message = errorData.error
+        } catch (e) {
+          // ignore JSON parsing error
+        }
+        throw new Error(message)
+      }
+
+      const { authUrl } = await response.json()
+
+      // Open the OAuth URL in a popup
+      const popup = window.open(
+        authUrl,
+        'outlook-calendar-auth',
+        'width=500,height=600,scrollbars=yes,resizable=yes'
+      )
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups and try again.')
+      }
+
+      // Poll for popup closure (indicating completion)
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed)
+          setIsConnectingOutlook(false)
+          
+          toast({
+            title: "Outlook Calendar Connected!",
+            description: "Your Outlook Calendar has been connected successfully.",
+          })
+          
+          // Reload the page to update the profile state
+          window.location.reload()
+        }
+      }, 1000)
+
+      // Cleanup interval after 5 minutes
+      setTimeout(() => {
+        clearInterval(checkClosed)
+        if (!popup.closed) {
+          popup.close()
+          setIsConnectingOutlook(false)
+        }
+      }, 300000)
+
+    } catch (error) {
+      console.error('Outlook Calendar connection error:', error)
+      setIsConnectingOutlook(false)
+      toast({
+        title: "Connection Failed",
+        description: error instanceof Error ? error.message : "Failed to connect Outlook Calendar",
         variant: "destructive",
       })
     }
@@ -148,58 +226,84 @@ const syncCalendar = async () => {
             throw new Error('Not authenticated');
         }
 
-        const response = await fetch(`https://automations.aiagents.co.id/webhook/cyclewise/calendar/sync?userId=${session.user.id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${session.access_token}`,
-                'Content-Type': 'application/json',
-            }
-        });
+        // Get user profile to determine which calendars to sync
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('google_calendar_connected, outlook_calendar_connected')
+            .eq('user_id', session.user.id)
+            .single();
 
-        // Log the raw response for debugging
-        const responseText = await response.text(); 
-        console.log('Response Text:', responseText); // Log the complete response
-
-        if (!response.ok) {
-            console.error(`Error response status: ${response.status}`);
-            console.error(`Error response text: ${responseText}`);
-            throw new Error(`Failed to sync calendar. HTTP status: ${response.status}`);
+        if (!profile) {
+            throw new Error('User profile not found');
         }
 
-        // Try to parse JSON response
-        try {
-            // Check if responseText is empty
-            if (!responseText) {
-                toast({
-                    title: "No Events Found",
-                    description: "There are no events in your calendar to sync.",
-                    variant: "info",
+        let totalSynced = 0;
+        const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number }> = [];
+
+        // Sync Google Calendar if connected
+        if (profile.google_calendar_connected) {
+            try {
+                const googleResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: session.user.id, 
+                        provider: 'google' 
+                    }),
                 });
-                return; // Exit early if no events are found
+
+                if (googleResponse.ok) {
+                    const googleResult = await googleResponse.json();
+                    results.push({ provider: 'Google', ...googleResult });
+                    totalSynced += googleResult.syncedCount || 0;
+                }
+            } catch (error) {
+                console.error('Google Calendar sync error:', error);
             }
+        }
 
-            const result = JSON.parse(responseText); // Attempt to parse JSON
-            console.log(result); // Log the parsed result
-
-            // Handle case when the result has no relevant data
-            if (!result || !result.events || result.events.length === 0) {
-                toast({
-                    title: "No Events Found",
-                    description: "Your calendar has no events to sync.",
-                    variant: "info",
+        // Sync Outlook Calendar if connected
+        if (profile.outlook_calendar_connected) {
+            try {
+                const outlookResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        user_id: session.user.id, 
+                        provider: 'outlook' 
+                    }),
                 });
-                return; // Exit early if no events are found
-            }
 
+                if (outlookResponse.ok) {
+                    const outlookResult = await outlookResponse.json();
+                    results.push({ provider: 'Outlook', ...outlookResult });
+                    totalSynced += outlookResult.syncedCount || 0;
+                }
+            } catch (error) {
+                console.error('Outlook Calendar sync error:', error);
+            }
+        }
+
+        if (totalSynced > 0) {
             toast({
                 title: "Calendar Synced",
-                description: `Calendar synced successfully with ${result.events.length} events.`,
+                description: `Successfully synced ${totalSynced} events from ${results.length} calendar(s).`,
             });
-            return result;
-        } catch (jsonError) {
-            console.error("Error parsing JSON:", jsonError); 
-            throw new Error('Response is not in JSON format');
+        } else {
+            toast({
+                title: "No New Events",
+                description: "No new cycle events found to sync.",
+            });
         }
+
+        return { results, totalSynced };
+
     } catch (error) {
         console.error('Calendar sync error:', error);
         toast({
@@ -213,32 +317,89 @@ const syncCalendar = async () => {
     }
 };
 
-  const disconnectCalendar = async () => {
+  const disconnectGoogleCalendar = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('Not authenticated')
 
+      // Get current profile to determine new calendar provider
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('outlook_calendar_connected')
+        .eq('user_id', user.id)
+        .single()
+
+      // Build update object avoiding invalid values for calendar_provider
+      const updatePayload: Record<string, string | boolean> = {
+        google_refresh_token: null,
+        google_calendar_connected: false,
+        updated_at: new Date().toISOString(),
+      }
+      if (profile?.outlook_calendar_connected) {
+        updatePayload.calendar_provider = 'outlook'
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          google_refresh_token: null,
-          google_calendar_connected: false,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload)
         .eq('user_id', user.id)
 
       if (error) throw error
 
       toast({
-        title: "Calendar Disconnected",
+        title: "Google Calendar Disconnected",
         description: "Your Google Calendar has been disconnected.",
       })
 
     } catch (error) {
-      console.error('Disconnect error:', error)
+      console.error('Disconnect Google error:', error)
       toast({
         title: "Disconnect Failed",
-        description: error instanceof Error ? error.message : "Failed to disconnect calendar",
+        description: error instanceof Error ? error.message : "Failed to disconnect Google Calendar",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const disconnectOutlookCalendar = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Get current profile to determine new calendar provider
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('google_calendar_connected')
+        .eq('user_id', user.id)
+        .single()
+
+      // Build update object avoiding invalid values for calendar_provider
+      const updatePayload: Record<string, string | boolean> = {
+        outlook_refresh_token: null,
+        outlook_calendar_connected: false,
+        updated_at: new Date().toISOString(),
+      }
+      if (profile?.google_calendar_connected) {
+        updatePayload.calendar_provider = 'google'
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('user_id', user.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Outlook Calendar Disconnected",
+        description: "Your Outlook Calendar has been disconnected.",
+      })
+
+    } catch (error) {
+      console.error('Disconnect Outlook error:', error)
+      toast({
+        title: "Disconnect Failed",
+        description: error instanceof Error ? error.message : "Failed to disconnect Outlook Calendar",
         variant: "destructive",
       })
     }
@@ -246,9 +407,12 @@ const syncCalendar = async () => {
 
   return {
     connectGoogleCalendar,
+    connectOutlookCalendar,
     syncCalendar,
-    disconnectCalendar,
-    isConnecting,
+    disconnectGoogleCalendar,
+    disconnectOutlookCalendar,
+    isConnectingGoogle,
+    isConnectingOutlook,
     isSyncing,
   }
 }

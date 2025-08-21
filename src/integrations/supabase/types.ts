@@ -87,6 +87,9 @@ export type Database = {
           full_name: string | null
           google_calendar_connected: boolean | null
           google_refresh_token: string | null
+          outlook_calendar_connected: boolean | null
+          outlook_refresh_token: string | null
+          calendar_provider: string | null
           id: string
           subscription_status: string | null
           updated_at: string
@@ -98,6 +101,9 @@ export type Database = {
           full_name?: string | null
           google_calendar_connected?: boolean | null
           google_refresh_token?: string | null
+          outlook_calendar_connected?: boolean | null
+          outlook_refresh_token?: string | null
+          calendar_provider?: string | null
           id?: string
           subscription_status?: string | null
           updated_at?: string
@@ -109,6 +115,9 @@ export type Database = {
           full_name?: string | null
           google_calendar_connected?: boolean | null
           google_refresh_token?: string | null
+          outlook_calendar_connected?: boolean | null
+          outlook_refresh_token?: string | null
+          calendar_provider?: string | null
           id?: string
           subscription_status?: string | null
           updated_at?: string

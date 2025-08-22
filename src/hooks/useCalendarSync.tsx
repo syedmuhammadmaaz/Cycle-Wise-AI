@@ -290,17 +290,19 @@ const syncCalendar = async () => {
             }
         }
 
-        if (totalSynced > 0) {
-            toast({
-                title: "Calendar Synced",
-                description: `Successfully synced ${totalSynced} events from ${results.length} calendar(s).`,
-            });
-        } else {
-            toast({
-                title: "No New Events",
-                description: "No new cycle events found to sync.",
-            });
-        }
+        // if (totalSynced > 0) {
+        //     toast({
+        //         title: "Calendar Synced",
+        //         description: `Successfully synced ${totalSynced} events from ${results.length} calendar(s).`,
+        //     });
+        // } else {
+        //     toast({
+        //         title: "No New Events",
+        //         description: "No new cycle events found to sync.",
+        //     });
+        // }
+
+        
 
         return { results, totalSynced };
 

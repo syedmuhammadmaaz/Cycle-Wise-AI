@@ -59,7 +59,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.error("Supabase signUp error:", error);
     return { error };
   }
-
+  // Ensure a profile row exists with the full name immediately
+  try {
+    if (data?.user?.id) {
+      const { error: upsertError } = await supabase
+        .from('profiles')
+        .upsert({
+          user_id: data.user.id,
+          email,
+          full_name: fullName,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      if (upsertError) {
+        console.warn('Profile upsert after signUp failed (will rely on trigger):', upsertError);
+      }
+    }
+  } catch (e) {
+    console.warn('Profile upsert threw unexpectedly:', e);
+  }
   return { error: null };
 };
 

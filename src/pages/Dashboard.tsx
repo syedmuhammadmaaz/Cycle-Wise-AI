@@ -142,7 +142,7 @@ const formatDate = (dateString) => {
               </Badge>
             )}
             <span className="text-sm text-muted-foreground">
-              Hi, {profile?.full_name || 'there'}!
+              {`Hi, ${profile?.full_name || user?.user_metadata?.full_name || 'there'}!`}
             </span>
             <Button variant="outline" size="sm" onClick={handleSignOut}>
               Sign Out

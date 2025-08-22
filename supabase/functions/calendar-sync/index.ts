@@ -3,6 +3,8 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
+// Create Supabase client
+const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
 Deno.serve(async (req)=>{
   if (req.method === 'OPTIONS') {
     return new Response(null, {
@@ -10,7 +12,6 @@ Deno.serve(async (req)=>{
     });
   }
   try {
-    const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
     let user_id;
     if (req.method === 'POST') {
       const body = await req.json();
@@ -31,29 +32,16 @@ Deno.serve(async (req)=>{
         });
       }
       if (body.provider) {
-        if (body.provider === 'google') {
-          const result = await syncUserCalendar(supabase, user_id, profile.google_refresh_token, 'google');
-          return new Response(JSON.stringify({
-            message: 'Calendar sync completed successfully',
-            result
-          }), {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json'
-            }
-          });
-        } else {
-          const result = await syncUserCalendar(supabase, user_id, profile.outlook_refresh_token, 'outlook');
-          return new Response(JSON.stringify({
-            message: 'Calendar sync completed successfully',
-            result
-          }), {
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json'
-            }
-          });
-        }
+        const result = await syncUserCalendar(supabase, user_id, body.provider === 'google' ? profile.google_refresh_token : profile.outlook_refresh_token, body.provider);
+        return new Response(JSON.stringify({
+          message: 'Calendar sync completed successfully',
+          result
+        }), {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
+        });
       }
       // Sync logic for a single user
       const result = await syncUserCalendar(supabase, user_id, profile.google_refresh_token || profile.outlook_refresh_token, profile.google_refresh_token ? 'google' : 'outlook');
@@ -125,30 +113,6 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('google_refresh_token, outlook_refresh_token, google_calendar_connected, outlook_calendar_connected').eq('user_id', user_id).single();
-    if (profileError || !profile?.google_refresh_token && !profile?.outlook_refresh_token) {
-      console.error('User not found or not connected:', profileError);
-      return new Response(JSON.stringify({
-        error: 'User not connected to any calendar'
-      }), {
-        status: 404,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
-      });
-    }
-    // Sync logic for a single user
-    const result = await syncUserCalendar(supabase, user_id, profile.google_refresh_token || profile.outlook_refresh_token, profile.google_refresh_token ? 'google' : 'outlook');
-    return new Response(JSON.stringify({
-      message: 'Calendar sync completed successfully',
-      result
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      }
-    });
   } catch (error) {
     console.error('Calendar sync error:', error);
     return new Response(JSON.stringify({
@@ -258,191 +222,79 @@ async function fetchOutlookEvents(accessToken, user_id) {
   console.log('Fetched Outlook events:', calendarData.value);
   return processCalendarEvents(calendarData.value, user_id, 'Outlook');
 }
-// async function processCalendarEvents(events, user_id, provider) {
-//   console.log(`_______________${provider} EVENTS_______________`);
-//   console.log(events.reverse());
-//   // Cycle filtering keywords
-//   const cycleKeywords = [
-//     'period',
-//     'menstruation',
-//     'cycle',
-//     'flow',
-//     'pms',
-//     'menstrual',
-//     'ovulation',
-//     'fertile',
-//     'luteal',
-//     'follicular',
-//     'spotting',
-//     'cramps',
-//     'bloating',
-//     'mood swing'
-//   ];
-//   // Log all events received
-//   console.log(`RAW Cycle-related events found: ${events.length}`);
-//   // events.forEach((event)=>{
-//   //   console.log(`Event found: ${event.summary}`);
-//   // });
-//   let cycleEvents = [];
-//   let syncedCount = 0;
-//   let existingCount = 0;
-//   for(let i = 0; i < events.length; i++){
-//     let thisEvent = events[i];
-//     let thisEventTitle = provider.toLowerCase() === 'google' ? thisEvent.summary : thisEvent.subject;
-//     if (thisEventTitle) {
-//       let lowerTitle = thisEventTitle.toLowerCase();
-//       // check if any keyword matches
-//       console.log(`Event found: ${thisEventTitle}`);
-//       if (cycleKeywords.some((keyword)=>lowerTitle.includes(keyword))) {
-//         console.log(`[Match] ➕ Matched summary: "${thisEventTitle}"`);
-//         cycleEvents.push(thisEvent);
-//       }
-//     }
-//   }
-//   // const cycleEvents = events.filter((event)=>{
-//   //   if (!event.summary) return false;
-//   //   const summary = event.summary.toLowerCase();
-//   //   const match = cycleKeywords.some((keyword)=>summary.includes(keyword));
-//   //   if (match) {
-//   //     console.log(`[Match] ➕ Matched summary: "${summary}"`);
-//   //   } else {
-//   //     console.log(`[Skip] ➖ Unmatched summary: "${summary}"`);
-//   //   }
-//   //   return match;
-//   // });
-//   let rows = [];
-//   if (cycleEvents.length > 0) {
-//     if (provider === 'Google' || provider === 'google') {
-//       rows = cycleEvents.map((ev)=>({
-//           user_id,
-//           provider,
-//           // Dates
-//           start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
-//           end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
-//           // Optional fields (can fill later if user tracks symptoms, lengths etc.)
-//           cycle_length: null,
-//           period_length: null,
-//           symptoms: null,
-//           // Notes = imported summary
-//           notes: `Imported from ${provider} Calendar: ${ev.summary}`,
-//           // Google/Outlook event ID for deduplication
-//           google_event_id: ev.id || ''
-//         }));
-//     } else {
-//       rows = cycleEvents.map((ev)=>({
-//           user_id,
-//           provider,
-//           // Dates
-//           start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
-//           end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
-//           // Optional fields (can fill later if user tracks symptoms, lengths etc.)
-//           cycle_length: null,
-//           period_length: null,
-//           symptoms: null,
-//           // Notes = imported summary
-//           notes: `Imported from ${provider} Calendar: ${ev.subject}`,
-//           // Google/Outlook event ID for deduplication
-//           google_event_id: ev.id || ''
-//         }));
-//     }
-//     console.log(rows);
-//     // Insert into Supabase
-//     const supabase = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '');
-//     const { data, error } = await supabase.from('cycles').insert(rows).select();
-//     if (error) {
-//       console.error('❌ Error inserting cycle events:', error);
-//     } else {
-//       syncedCount = data.length;
-//       console.log(`✅ Inserted ${syncedCount} cycle events`);
-//     }
-//   }
-//   console.log(`Cycle-related events found: ${cycleEvents.length}`);
-//   // Continue with cycle event processing...
-//   return {
-//     totalEvents: events.length,
-//     cycleEvents: cycleEvents.length,
-//     syncedCount,
-//     existingCount,
-//     sampleEvent: cycleEvents.length ? cycleEvents[0] : [],
-//     rows: rows
-//   };
-// }
-
-
-
 async function processCalendarEvents(events, user_id, provider) {
-    console.log(`_______________${provider} EVENTS_______________`);
-    console.log(events.reverse());
-    
-    // Cycle filtering keywords
-    const cycleKeywords = [
-        'period', 'menstruation', 'cycle', 'flow', 'pms',
-        'menstrual', 'ovulation', 'fertile', 'luteal',
-        'follicular', 'spotting', 'cramps', 'bloating', 'mood swing'
-    ];
-    
-    let cycleEvents = [];
-    let syncedCount = 0;
-    let existingCount = 0;
-
-    // Fetch existing cycle events to compare
-    const { data: existingEvents } = await supabase
-        .from('cycles')
-        .select('google_event_id')
-        .eq('user_id', user_id);
-
-    const existingIds = existingEvents.map(event => event.google_event_id);
-
-    // Filter events based on cycle keywords
-    for (let thisEvent of events) {
-        let thisEventTitle = provider.toLowerCase() === 'google' ? thisEvent.summary : thisEvent.subject;
-        if (thisEventTitle) {
-            let lowerTitle = thisEventTitle.toLowerCase();
-            if (cycleKeywords.some((keyword) => lowerTitle.includes(keyword))) {
-                console.log(`Event found: ${thisEventTitle}`);
-                if (!existingIds.includes(thisEvent.id)) {
-                    console.log(`[New Event] ➕ Matched summary: "${thisEventTitle}"`);
-                    cycleEvents.push(thisEvent);
-                } else {
-                    console.log(`[Existing Event] ➖ Already exists: "${thisEventTitle}"`);
-                    existingCount++;
-                }
-            }
-        }
-    }
-
-    let rows = [];
-    // If there are any new cycle events, prepare to insert into Supabase
-    if (cycleEvents.length > 0) {
-        rows = cycleEvents.map(ev => ({
-            user_id,
-            provider,
-            start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
-            end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
-            cycle_length: null,
-            period_length: null,
-            symptoms: null,
-            notes: `Imported from ${provider} Calendar: ${ev.summary}`,
-            google_event_id: ev.id || ''
-        }));
-
-        const { data, error } = await supabase.from('cycles').insert(rows).select();
-        if (error) {
-            console.error('❌ Error inserting cycle events:', error);
+  console.log(`_______________${provider} EVENTS_______________`);
+  console.log(events.reverse());
+  // Cycle filtering keywords
+  const cycleKeywords = [
+    'period',
+    'menstruation',
+    'cycle',
+    'flow',
+    'pms',
+    'menstrual',
+    'ovulation',
+    'fertile',
+    'luteal',
+    'follicular',
+    'spotting',
+    'cramps',
+    'bloating',
+    'mood swing'
+  ];
+  let cycleEvents = [];
+  let syncedCount = 0;
+  let existingCount = 0;
+  // Fetch existing cycle events to compare
+  const { data: existingEvents } = await supabase.from('cycles').select('google_event_id').eq('user_id', user_id);
+  const existingIds = existingEvents.map((event)=>event.google_event_id);
+  // Filter events based on cycle keywords
+  for (let thisEvent of events){
+    let thisEventTitle = provider.toLowerCase() === 'google' ? thisEvent.summary : thisEvent.subject;
+    if (thisEventTitle) {
+      let lowerTitle = thisEventTitle.toLowerCase();
+      if (cycleKeywords.some((keyword)=>lowerTitle.includes(keyword))) {
+        console.log(`Event found: ${thisEventTitle}`);
+        if (!existingIds.includes(thisEvent.id)) {
+          console.log(`[New Event] ➕ Matched summary: "${thisEventTitle}"`);
+          cycleEvents.push(thisEvent);
         } else {
-            syncedCount = data.length;
-            console.log(`✅ Inserted ${syncedCount} cycle events`);
+          console.log(`[Existing Event] ➖ Already exists: "${thisEventTitle}"`);
+          existingCount++;
         }
-    } else {
-        console.log('No new cycle events to sync.');
+      }
     }
-
-    // Return the counts for feedback
-    return {
-        totalEvents: events.length,
-        cycleEvents: cycleEvents.length,
-        syncedCount,
-        existingCount,
-        rows
-    };
+  }
+  let rows = [];
+  // If there are any new cycle events, prepare to insert into Supabase
+  if (cycleEvents.length > 0) {
+    rows = cycleEvents.map((ev)=>({
+        user_id,
+        provider,
+        start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
+        end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
+        cycle_length: null,
+        period_length: null,
+        symptoms: null,
+        notes: `Imported from ${provider} Calendar: ${ev.summary}`,
+        google_event_id: ev.id || ''
+      }));
+    const { data, error } = await supabase.from('cycles').insert(rows).select();
+    if (error) {
+      console.error('❌ Error inserting cycle events:', error);
+    } else {
+      syncedCount = data.length;
+      console.log(`✅ Inserted ${syncedCount} cycle events`);
+    }
+  } else {
+    console.log('No new cycle events to sync.');
+  }
+  // Return the counts for feedback
+  return {
+    totalEvents: events.length,
+    cycleEvents: cycleEvents.length,
+    syncedCount,
+    existingCount,
+    rows
+  };
 }

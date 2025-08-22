@@ -218,106 +218,200 @@ export const useCalendarSync = () => {
   //   }
   // }
 
+// const syncCalendar = async () => {
+//     try {
+//         setIsSyncing(true);
+//         const { data: { session } } = await supabase.auth.getSession();
+//         if (!session) {
+//             throw new Error('Not authenticated');
+//         }
+
+//         // Get user profile to determine which calendars to sync
+//         const { data: profile } = await supabase
+//             .from('profiles')
+//             .select('google_calendar_connected, outlook_calendar_connected')
+//             .eq('user_id', session.user.id)
+//             .single();
+
+//         if (!profile) {
+//             throw new Error('User profile not found');
+//         }
+
+//         let totalSynced = 0;
+//         const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number }> = [];
+
+//         // Sync Google Calendar if connected
+//         if (profile.google_calendar_connected) {
+//             try {
+//                 const googleResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+//                     method: 'POST',
+//                     headers: {
+//                         'Authorization': `Bearer ${session.access_token}`,
+//                         'Content-Type': 'application/json',
+//                     },
+//                     body: JSON.stringify({ 
+//                         user_id: session.user.id, 
+//                         provider: 'google' 
+//                     }),
+//                 });
+
+//                 if (googleResponse.ok) {
+//                     const googleResult = await googleResponse.json();
+//                     results.push({ provider: 'Google', ...googleResult });
+//                     totalSynced += googleResult.syncedCount || 0;
+//                 }
+//             } catch (error) {
+//                 console.error('Google Calendar sync error:', error);
+//             }
+//         }
+
+//         // Sync Outlook Calendar if connected
+//         if (profile.outlook_calendar_connected) {
+//             try {
+//                 const outlookResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+//                     method: 'POST',
+//                     headers: {
+//                         'Authorization': `Bearer ${session.access_token}`,
+//                         'Content-Type': 'application/json',
+//                     },
+//                     body: JSON.stringify({ 
+//                         user_id: session.user.id, 
+//                         provider: 'outlook' 
+//                     }),
+//                 });
+
+//                 if (outlookResponse.ok) {
+//                     const outlookResult = await outlookResponse.json();
+//                     results.push({ provider: 'Outlook', ...outlookResult });
+//                     totalSynced += outlookResult.syncedCount || 0;
+//                 }
+//             } catch (error) {
+//                 console.error('Outlook Calendar sync error:', error);
+//             }
+//         }
+
+//         if (totalSynced > 0) {
+//             toast({
+//                 title: "Calendar Synced",
+//                 description: `Successfully synced ${totalSynced} events from ${results.length} calendar(s).`,
+//             });
+//         } else {
+//             toast({
+//                 title: "No New Events",
+//                 description: "No new cycle events found to sync.",
+//             });
+//         }
+
+//         return { results, totalSynced };
+
+//     } catch (error) {
+//         console.error('Calendar sync error:', error);
+//         toast({
+//             title: "Sync Failed",
+//             description: error instanceof Error ? error.message : "Failed to sync calendar",
+//             variant: "destructive",
+//         });
+//         throw error;
+//     } finally {
+//         setIsSyncing(false);
+//     }
+// };
+
+
 const syncCalendar = async () => {
-    try {
-        setIsSyncing(true);
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-            throw new Error('Not authenticated');
-        }
-
-        // Get user profile to determine which calendars to sync
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('google_calendar_connected, outlook_calendar_connected')
-            .eq('user_id', session.user.id)
-            .single();
-
-        if (!profile) {
-            throw new Error('User profile not found');
-        }
-
-        let totalSynced = 0;
-        const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number }> = [];
-
-        // Sync Google Calendar if connected
-        if (profile.google_calendar_connected) {
-            try {
-                const googleResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        user_id: session.user.id, 
-                        provider: 'google' 
-                    }),
-                });
-
-                if (googleResponse.ok) {
-                    const googleResult = await googleResponse.json();
-                    results.push({ provider: 'Google', ...googleResult });
-                    totalSynced += googleResult.syncedCount || 0;
-                }
-            } catch (error) {
-                console.error('Google Calendar sync error:', error);
-            }
-        }
-
-        // Sync Outlook Calendar if connected
-        if (profile.outlook_calendar_connected) {
-            try {
-                const outlookResponse = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        user_id: session.user.id, 
-                        provider: 'outlook' 
-                    }),
-                });
-
-                if (outlookResponse.ok) {
-                    const outlookResult = await outlookResponse.json();
-                    results.push({ provider: 'Outlook', ...outlookResult });
-                    totalSynced += outlookResult.syncedCount || 0;
-                }
-            } catch (error) {
-                console.error('Outlook Calendar sync error:', error);
-            }
-        }
-
-        // if (totalSynced > 0) {
-        //     toast({
-        //         title: "Calendar Synced",
-        //         description: `Successfully synced ${totalSynced} events from ${results.length} calendar(s).`,
-        //     });
-        // } else {
-        //     toast({
-        //         title: "No New Events",
-        //         description: "No new cycle events found to sync.",
-        //     });
-        // }
-
-        
-
-        return { results, totalSynced };
-
-    } catch (error) {
-        console.error('Calendar sync error:', error);
-        toast({
-            title: "Sync Failed",
-            description: error instanceof Error ? error.message : "Failed to sync calendar",
-            variant: "destructive",
-        });
-        throw error;
-    } finally {
-        setIsSyncing(false);
+  try {
+    setIsSyncing(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated');
     }
+
+    // Get user profile to determine which calendars to sync
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('google_calendar_connected, outlook_calendar_connected')
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (!profile) {
+      throw new Error('User profile not found');
+    }
+
+    let totalSynced = 0;
+    let totalExisting = 0;
+    const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number; existingCount?: number }> = [];
+
+    // Helper for syncing a provider
+    const syncProvider = async (provider: 'google' | 'outlook') => {
+      const response = await fetch(`https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/calendar-sync`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: session.user.id,
+          provider,
+        }),
+      });
+
+      if (response.ok) {
+        // The edge function returns { message, result: { syncedCount, existingCount, ... } }
+        // Handle both nested and flat results defensively
+        const json = await response.json();
+        const parsedResult = json?.result ?? json;
+        results.push({ provider: provider === 'google' ? 'Google' : 'Outlook', ...parsedResult });
+        totalSynced += parsedResult.syncedCount || 0;
+        totalExisting += parsedResult.existingCount || 0;
+      } else {
+        console.error(`${provider} sync failed`, await response.text());
+      }
+    };
+
+    if (profile.google_calendar_connected) {
+      await syncProvider('google');
+    }
+
+    if (profile.outlook_calendar_connected) {
+      await syncProvider('outlook');
+    }
+
+    // Show appropriate toast
+    if (totalSynced > 0) {
+      toast({
+        title: "Calendar Synced",
+        description: `Successfully synced ${totalSynced} new event(s) from ${results.length} calendar(s).`,
+      });
+    } else if (totalExisting > 0) {
+      toast({
+        title: "No New Events",
+        description: `${totalExisting} event(s) were already in your calendar.`,
+      });
+    } else {
+      toast({
+        title: "No Events",
+        description: "No cycle events available to sync.",
+      });
+    }
+
+    return { results, totalSynced, totalExisting };
+
+  } catch (error) {
+    console.error('Calendar sync error:', error);
+    toast({
+      title: "Sync Failed",
+      description: error instanceof Error ? error.message : "Failed to sync calendar",
+      variant: "destructive",
+    });
+    throw error;
+  } finally {
+    setIsSyncing(false);
+  }
 };
+
+
+
+
 
   const disconnectGoogleCalendar = async () => {
     try {

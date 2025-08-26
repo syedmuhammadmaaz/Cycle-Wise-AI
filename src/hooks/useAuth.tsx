@@ -6,11 +6,12 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any; data?: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-    forgotPassword: (email: string) => Promise<{ error: any }>;
+  forgotPassword: (email: string) => Promise<{ error: any }>;
   updatePassword: (password: string) => Promise<{ error: any }>;
+  resendConfirmationEmail: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,41 +44,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
  const signUp = async (email: string, password: string, fullName: string) => {
   const redirectUrl = `${window.location.origin}/`;
 
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: redirectUrl,
-      data: {
-        full_name: fullName,
-      },
-    }
-  });
-
-  console.log("SignUp response:", data);
-  if (error) {
-    console.error("Supabase signUp error:", error);
-    return { error };
-  }
-  // Ensure a profile row exists with the full name immediately
   try {
-    if (data?.user?.id) {
-      const { error: upsertError } = await supabase
-        .from('profiles')
-        .upsert({
-          user_id: data.user.id,
-          email,
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
           full_name: fullName,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-      if (upsertError) {
-        console.warn('Profile upsert after signUp failed (will rely on trigger):', upsertError);
+        },
       }
+    });
+
+    console.log("SignUp response:", data);
+    
+    if (error) {
+      console.error("Supabase signUp error:", error);
+      
+      // Handle specific email confirmation errors
+      if (error.message?.includes('confirmation email') || error.code === 'unexpected_failure') {
+        return { 
+          error: {
+            message: "Email confirmation service is temporarily unavailable. Please try again later or contact support.",
+            code: error.code
+          }
+        };
+      }
+      
+      return { error };
     }
-  } catch (e) {
-    console.warn('Profile upsert threw unexpectedly:', e);
+
+    // Check if user was created but email confirmation failed
+    if (data?.user && !data?.session) {
+      // User created but needs email confirmation
+      console.log("User created successfully, email confirmation sent");
+      
+      // Ensure a profile row exists with the full name immediately
+      try {
+        if (data.user.id) {
+          const { error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+              user_id: data.user.id,
+              email,
+              full_name: fullName,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' });
+          if (upsertError) {
+            console.warn('Profile upsert after signUp failed (will rely on trigger):', upsertError);
+          }
+        }
+      } catch (e) {
+        console.warn('Profile upsert threw unexpectedly:', e);
+      }
+      
+      return { error: null, data };
+    }
+
+    return { error: null, data };
+  } catch (err) {
+    console.error("Unexpected error during signup:", err);
+    return { 
+      error: {
+        message: "An unexpected error occurred. Please try again.",
+        code: 'unexpected_error'
+      }
+    };
   }
-  return { error: null };
 };
 
 
@@ -111,6 +144,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error };
   };
 
+  const resendConfirmationEmail = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: redirectUrl,
+      }
+    });
+    return { error };
+  };
+
 
   return (
     <AuthContext.Provider value={{
@@ -120,8 +166,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signIn,
       signOut,
-       forgotPassword,
-      updatePassword
+      forgotPassword,
+      updatePassword,
+      resendConfirmationEmail
     }}>
       {children}
     </AuthContext.Provider>

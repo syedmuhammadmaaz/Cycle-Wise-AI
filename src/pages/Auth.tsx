@@ -10,11 +10,13 @@ import { toast } from '@/hooks/use-toast';
 import { Heart, Sparkles, Shield, Zap } from 'lucide-react';
 
 const Auth = () => {
-  const { user, signIn, signUp, forgotPassword, updatePassword } = useAuth();
+  const { user, signIn, signUp, forgotPassword, updatePassword, resendConfirmationEmail } = useAuth();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState('');
 
   useEffect(() => {
     // Check if this is a password reset flow
@@ -58,21 +60,58 @@ const Auth = () => {
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
 
-    const { error } = await signUp(email, password, fullName);
+    const { error, data } = await signUp(email, password, fullName);
 
     if (error) {
-      toast({
-        title: "Error creating account",
-        description: error.message,
-        variant: "destructive"
-      });
+      // Check if it's an email confirmation error
+      if (error.code === 'unexpected_failure' || error.message?.includes('confirmation email')) {
+        toast({
+          title: "Account created but email confirmation failed",
+          description: "Your account was created successfully, but we couldn't send the confirmation email. You can try signing in directly or request a new confirmation email.",
+          variant: "destructive"
+        });
+        // Show email confirmation screen
+        setPendingEmail(email);
+        setShowEmailConfirmation(true);
+      } else {
+        toast({
+          title: "Error creating account",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     } else {
+      // Success - show email confirmation screen
+      setPendingEmail(email);
+      setShowEmailConfirmation(true);
       toast({
         title: "Account created successfully",
         description: "Please check your email to verify your account."
       });
     }
 
+    setIsLoading(false);
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!pendingEmail) return;
+    
+    setIsLoading(true);
+    const { error } = await resendConfirmationEmail(pendingEmail);
+    
+    if (error) {
+      toast({
+        title: "Error sending confirmation email",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Confirmation email sent",
+        description: "Please check your email for the confirmation link."
+      });
+    }
+    
     setIsLoading(false);
   };
 
@@ -219,6 +258,77 @@ const Auth = () => {
                   )}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show email confirmation screen
+  if (showEmailConfirmation) {
+    return (
+      <div className="min-h-screen gradient-hero flex items-center justify-center p-4 relative overflow-hidden">
+        {/* Floating background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-primary/10 animate-float blur-3xl"></div>
+          <div className="absolute top-40 right-20 w-24 h-24 rounded-full bg-accent/15 animate-float" style={{animationDelay: '2s'}}></div>
+          <div className="absolute bottom-40 left-1/4 w-40 h-40 rounded-full bg-primary/5 animate-float" style={{animationDelay: '4s'}}></div>
+          <div className="absolute top-1/2 right-10 w-20 h-20 rounded-full bg-primary/8 animate-float" style={{animationDelay: '1s'}}></div>
+        </div>
+
+        <div className="w-full max-w-md relative z-10">
+          <Card className="glass-card shadow-strong animate-scale-in border-primary/20">
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-6">
+                <div className="relative">
+                  <Heart className="h-12 w-12 text-primary animate-glow" />
+                  <div className="absolute inset-0 h-12 w-12 rounded-full animate-pulse-glow"></div>
+                </div>
+              </div>
+              <CardTitle className="text-3xl font-bold gradient-primary bg-clip-text text-transparent mb-3">
+                Check Your Email
+              </CardTitle>
+              <CardDescription className="text-lg text-muted-foreground">
+                We've sent a confirmation link to
+              </CardDescription>
+              <div className="text-sm font-medium text-primary mt-2">
+                {pendingEmail}
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center text-sm text-muted-foreground">
+                <p>Click the link in your email to verify your account and start using CycleWise.</p>
+                <p className="mt-2">Didn't receive the email? Check your spam folder or request a new one.</p>
+              </div>
+              
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleResendConfirmation}
+                  className="w-full gradient-primary text-primary-foreground shadow-glow hover-lift h-12 text-base font-medium" 
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
+                      Sending...
+                    </div>
+                  ) : (
+                    "Resend Confirmation Email"
+                  )}
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setShowEmailConfirmation(false);
+                    setPendingEmail('');
+                  }}
+                  className="w-full h-12 text-base font-medium"
+                >
+                  Back to Sign In
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

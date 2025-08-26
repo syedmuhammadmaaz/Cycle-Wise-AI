@@ -8,6 +8,7 @@ import { X, Send, Bot, User, Sparkles, Heart, Brain, Activity, Shield, Zap, Mess
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore'
 import { fetchUserCycleEvents } from '@/lib/calendarClient'
+import type { CalendarEvent } from '@/store/calendarStore'
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -56,17 +57,6 @@ const AIChat = ({ onClose }: AIChatProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-//   useEffect(() => {
-//   if (user?.id) {
-//     fetchChatHistory();
-
-//     fetchUserCycleEvents(user.id).then(events => {
-//        console.log(' Events fetched from Supabase:', events);
-//       useCalendarStore.getState().setEvents(events);
-//     });
-//   }
-// }, [user?.id]);
-
   useEffect(() => {
     if (!user?.id) return;
 
@@ -81,35 +71,16 @@ const AIChat = ({ onClose }: AIChatProps) => {
   }, [user?.id]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Scroll to bottom when messages change
+    const scrollToBottom = () => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    // Use setTimeout to ensure DOM is updated before scrolling
+    const timeoutId = setTimeout(scrollToBottom, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [messages]);
-
-  // useEffect(() => {
-  //   fetchChatHistory();
-  // }, [user]);
-
-  // useEffect(() => {
-  //   if (scrollAreaRef.current) {
-  //     scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-  //   }
-  // }, [messages]);
-
-
-  //  const fetchChatHistory = async () => {
-  //   try {
-  //     const { data, error } = await supabase
-  //       .from('chat_messages')
-  //       .select('*')
-  //       .eq('user_id', user?.id)
-  //       .order('created_at', { ascending: true })
-  //       .limit(200);
-
-  //     if (error) throw error;
-  //     setMessages(data || []);
-  //   } catch (error) {
-  //     console.error('Error fetching chat history:', error);
-  //   }
-  // };
 
   const fetchChatHistory = async () => {
     try {
@@ -163,14 +134,11 @@ const generateAIResponse = async (
     setIsLoading(true);
     const userMessage = inputMessage.trim();
     setInputMessage('');
-// const aiResponse = generateAIResponse(userMessage);
-  //  Pull events from global state
-  const calendarEvents = useCalendarStore.getState().events;
+    //  Pull events from global state
+    const calendarEvents = useCalendarStore.getState().events;
 
-  // 👇 Pass calendar events with the message
-  const aiResponse = await generateAIResponse(userMessage, calendarEvents);
-    // Generate AI response (in a real app, this would call an AI API)
-    // const aiResponse = generateAIResponse(userMessage);
+    // 👇 Pass calendar events with the message
+    const aiResponse = await generateAIResponse(userMessage, calendarEvents);
 
     try {
       const { data, error } = await supabase
@@ -407,102 +375,97 @@ const generateAIResponse = async (
                 </motion.div>
               </motion.div>
             )}
-            
-            {/* <AnimatePresence>
+
+            <AnimatePresence>
               {messages.map((msg, index) => (
-                <motion.div 
+                <motion.div
                   key={msg.id}
                   initial={{ opacity: 0, scale: 0.95, y: 20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
                   className="space-y-4"
-                > */}
-                  {/* User message */}
-                  {/* <div className="flex justify-end">
-                    <div className="max-w-[80%] relative group">
-                      <motion.div 
-                        className="relative bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground rounded-2xl rounded-br-md p-4 shadow-lg"
-                        whileHover={{ scale: 1.02 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      > */}
-                        {/* Animated border */}
-                        {/* <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500 rounded-r-full">
-                          <motion.div 
-                            className="w-full h-2 bg-white/50 rounded-full"
-                            animate={{ y: [0, '100%', 0] }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                          />
-                        </div> */}
-                        
-                        {/* Message content */}
-                        {/* <p className="text-sm leading-relaxed relative z-10">{msg.message}</p> */}
-                        
-                        {/* Hover effect */}
-                        {/* <motion.div 
-                          className="absolute inset-0 bg-white/10 rounded-2xl rounded-br-md opacity-0 group-hover:opacity-100 transition-opacity"
-                          initial={false}
-                        />
-                      </motion.div> */}
-                      
-                      {/* <div className="flex items-center gap-2 justify-end mt-2">
-                        <motion.div 
-                          className="w-6 h-6 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center"
-                          whileHover={{ scale: 1.2, rotate: 15 }}
+                >
+                  {/* only render the pink user bubble when msg.message is non-empty */}
+                  {msg.message && (
+                    <div className="flex justify-end">
+                      <div className="max-w-[80%] relative group">
+                        <motion.div
+                          className="relative bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground rounded-2xl rounded-br-md p-4 shadow-lg"
+                          whileHover={{ scale: 1.02 }}
+                          transition={{ type: "spring", stiffness: 300 }}
                         >
-                          <User className="h-3 w-3 text-primary" />
+                          {/* Animated border */}
+                          <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500 rounded-r-full">
+                            <motion.div
+                              className="w-full h-2 bg-white/50 rounded-full"
+                              animate={{ y: [0, "100%", 0] }}
+                              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            />
+                          </div>
+                          <p className="text-sm leading-relaxed relative z-10">{msg.message}</p>
+                          {/* Hover effect */}
+                          <motion.div
+                            className="absolute inset-0 bg-white/10 rounded-2xl rounded-br-md opacity-0 group-hover:opacity-100 transition-opacity"
+                            initial={false}
+                          />
                         </motion.div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" /> */}
-                          {/* <span>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span> */}
-                          {/* <span>{formatTime(msg.created_at)}</span>
+                        <div className="flex items-center gap-2 justify-end mt-2">
+                          <motion.div
+                            className="w-6 h-6 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center"
+                            whileHover={{ scale: 1.2, rotate: 15 }}
+                          >
+                            <User className="h-3 w-3 text-primary" />
+                          </motion.div>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{formatTime(msg.created_at)}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div> */}
-                  
+                  )}
+
                   {/* AI response */}
-                  {/* <div className="flex justify-start">
+                  <div className="flex justify-start">
                     <div className="max-w-[80%] relative group">
-                      <motion.div 
+                      <motion.div
                         className="relative bg-gradient-to-br from-muted/80 via-muted/60 to-muted/40 backdrop-blur-sm rounded-2xl rounded-bl-md p-4 shadow-sm border border-white/10"
                         whileHover={{ scale: 1.02 }}
                         transition={{ type: "spring", stiffness: 300 }}
-                      > */}
+                      >
                         {/* Animated gradient border */}
-                        {/* <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full overflow-hidden">
-                          <motion.div 
+                        <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full overflow-hidden">
+                          <motion.div
                             className="w-full h-full bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500"
-                            animate={{ 
+                            animate={{
                               background: [
                                 "linear-gradient(to bottom, rgb(168 85 247), rgb(139 92 246), rgb(147 51 234))",
                                 "linear-gradient(to bottom, rgb(139 92 246), rgb(147 51 234), rgb(168 85 247))",
-                                "linear-gradient(to bottom, rgb(147 51 234), rgb(168 85 247), rgb(139 92 246))"
-                              ]
+                                "linear-gradient(to bottom, rgb(147 51 234), rgb(168 85 247), rgb(139 92 246))",
+                              ],
                             }}
                             transition={{ duration: 3, repeat: Infinity }}
                           />
                         </div>
-                         */}
+
                         {/* AI thinking indicator */}
-                        {/* <motion.div 
+                        <motion.div
                           className="absolute top-2 right-3 w-2 h-2 bg-green-400 rounded-full"
                           animate={{ opacity: [0.5, 1, 0.5] }}
                           transition={{ duration: 2, repeat: Infinity }}
                         />
-                        
-                        <p className="text-sm leading-relaxed text-foreground relative z-10">{msg.response}</p> */}
-                        
+
+                        <p className="text-sm leading-relaxed text-foreground relative z-10">
+                          {msg.response}
+                        </p>
                         {/* Hover glow effect */}
-                        {/* <motion.div 
+                        <motion.div
                           className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-violet-500/5 rounded-2xl rounded-bl-md opacity-0 group-hover:opacity-100 transition-opacity"
                           initial={false}
                         />
                       </motion.div>
-                      
                       <div className="flex items-center gap-2 mt-2">
-                        <motion.div 
+                        <motion.div
                           className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-purple-500/20"
                           animate={{ rotate: [0, 360] }}
                           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
@@ -512,7 +475,7 @@ const generateAIResponse = async (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Sparkles className="h-3 w-3 text-teal-500" />
                           <span>AI Health Guide</span>
-                          <motion.div 
+                          <motion.div
                             className="w-1 h-1 bg-green-400 rounded-full"
                             animate={{ scale: [1, 1.5, 1] }}
                             transition={{ duration: 2, repeat: Infinity }}
@@ -524,119 +487,6 @@ const generateAIResponse = async (
                 </motion.div>
               ))}
             </AnimatePresence>
-             */}
-
-             <AnimatePresence>
-  {messages.map((msg, index) => (
-    <motion.div
-      key={msg.id}
-      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="space-y-4"
-    >
-      {/* only render the pink user bubble when msg.message is non-empty */}
-      {msg.message && (
-        <div className="flex justify-end">
-          <div className="max-w-[80%] relative group">
-            <motion.div
-              className="relative bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground rounded-2xl rounded-br-md p-4 shadow-lg"
-              whileHover={{ scale: 1.02 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              {/* Animated border */}
-              <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500 rounded-r-full">
-                <motion.div
-                  className="w-full h-2 bg-white/50 rounded-full"
-                  animate={{ y: [0, "100%", 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
-              <p className="text-sm leading-relaxed relative z-10">{msg.message}</p>
-              {/* Hover effect */}
-              <motion.div
-                className="absolute inset-0 bg-white/10 rounded-2xl rounded-br-md opacity-0 group-hover:opacity-100 transition-opacity"
-                initial={false}
-              />
-            </motion.div>
-            <div className="flex items-center gap-2 justify-end mt-2">
-              <motion.div
-                className="w-6 h-6 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center"
-                whileHover={{ scale: 1.2, rotate: 15 }}
-              >
-                <User className="h-3 w-3 text-primary" />
-              </motion.div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                <span>{formatTime(msg.created_at)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* AI response */}
-      <div className="flex justify-start">
-        <div className="max-w-[80%] relative group">
-          <motion.div
-            className="relative bg-gradient-to-br from-muted/80 via-muted/60 to-muted/40 backdrop-blur-sm rounded-2xl rounded-bl-md p-4 shadow-sm border border-white/10"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            {/* Animated gradient border */}
-            <div className="absolute -left-1 top-0 bottom-0 w-1 rounded-l-full overflow-hidden">
-              <motion.div
-                className="w-full h-full bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500"
-                animate={{
-                  background: [
-                    "linear-gradient(to bottom, rgb(168 85 247), rgb(139 92 246), rgb(147 51 234))",
-                    "linear-gradient(to bottom, rgb(139 92 246), rgb(147 51 234), rgb(168 85 247))",
-                    "linear-gradient(to bottom, rgb(147 51 234), rgb(168 85 247), rgb(139 92 246))",
-                  ],
-                }}
-                transition={{ duration: 3, repeat: Infinity }}
-              />
-            </div>
-
-            {/* AI thinking indicator */}
-            <motion.div
-              className="absolute top-2 right-3 w-2 h-2 bg-green-400 rounded-full"
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-
-            <p className="text-sm leading-relaxed text-foreground relative z-10">
-              {msg.response}
-            </p>
-            {/* Hover glow effect */}
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-violet-500/5 rounded-2xl rounded-bl-md opacity-0 group-hover:opacity-100 transition-opacity"
-              initial={false}
-            />
-          </motion.div>
-          <div className="flex items-center gap-2 mt-2">
-            <motion.div
-              className="w-6 h-6 bg-gradient-to-br from-purple-500/20 to-violet-500/20 rounded-full flex items-center justify-center border border-purple-500/20"
-              animate={{ rotate: [0, 360] }}
-              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            >
-              <Bot className="h-3 w-3 text-purple-600" />
-            </motion.div>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-teal-500" />
-              <span>AI Health Guide</span>
-              <motion.div
-                className="w-1 h-1 bg-green-400 rounded-full"
-                animate={{ scale: [1, 1.5, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  ))}
-</AnimatePresence>
 
             {isLoading && (
               <motion.div 
@@ -723,6 +573,9 @@ const generateAIResponse = async (
                 </div>
               </motion.div>
             )}
+            
+            {/* Invisible element to scroll to */}
+            <div ref={bottomRef} />
           </div>
           
           {/* Enhanced Sticky Input Bar */}
@@ -842,4 +695,3 @@ const generateAIResponse = async (
 };
 
 export default AIChat;
-

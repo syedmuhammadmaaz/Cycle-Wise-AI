@@ -350,6 +350,7 @@ export const CalendarConnection = ({ googleConnected, outlookConnected, onConnec
           <Button 
             variant="outline"
             className="w-full"
+            disabled
           >
             <Apple className="h-4 w-4 mr-2" />
             Connect Apple Calendar (coming soon)

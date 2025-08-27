@@ -379,18 +379,18 @@ const syncCalendar = async () => {
     // Show appropriate toast
     if (totalSynced > 0) {
       toast({
-        title: "Calendar Synced",
-        description: `Successfully synced ${totalSynced} new event(s) from ${results.length} calendar(s).`,
+        title: "Calendars Synced",
+        description: "Your calendars have been successfully synchronized.",
       });
     } else if (totalExisting > 0) {
       toast({
-        title: "No New Events",
-        description: `${totalExisting} event(s) were already in your calendar.`,
+        title: "Calendars Synced",
+        description: "Your calendars have been successfully synchronized.",
       });
     } else {
       toast({
-        title: "No Events",
-        description: "No cycle events available to sync.",
+        title: "Calendars Synced",
+        description: "Your calendars have been successfully synchronized.",
       });
     }
 

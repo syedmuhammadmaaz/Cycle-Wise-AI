@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useCalendarSync } from '@/hooks/useCalendarSync'
-import { Calendar, Check, RefreshCw, Unplug, Mail } from 'lucide-react'
+import { Calendar, Check, RefreshCw, Unplug, Mail, Apple } from 'lucide-react'
 
 interface CalendarConnectionProps {
   googleConnected: boolean
@@ -345,6 +345,14 @@ export const CalendarConnection = ({ googleConnected, outlookConnected, onConnec
                 Connect Outlook Calendar
               </>
             )}
+          </Button>
+
+          <Button 
+            variant="outline"
+            className="w-full"
+          >
+            <Apple className="h-4 w-4 mr-2" />
+            Connect Apple Calendar (coming soon)
           </Button>
         </div>
         

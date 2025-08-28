@@ -23,12 +23,21 @@ interface Profile {
   subscription_status: string;
   google_calendar_connected: boolean;
 }
+const PRICE_IDS = {
+premium: 'price_1234567890ABCDEF',
+pro: 'price_ABCDEF1234567890', 
+basic: 'price_0987654321FEDCBA', 
+};
+
+const SUPABASE_CHECKOUT_URL = 'https://[your-project-ref].supabase.co/functions/v1/create-checkout-session';
 
 const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
   const { user, updatePassword } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
 
   useEffect(() => {
     if (isOpen && user) {
@@ -56,6 +65,53 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
       });
     } finally {
       setIsLoadingProfile(false);
+    }
+  };
+
+  const handleUpgradeClick = async (tier) => {
+    setIsUpgrading(true);
+    const userId = user?.id;
+
+    if (!userId || !PRICE_IDS[tier]) {
+      console.error('User ID or price ID is missing.');
+      setIsUpgrading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(SUPABASE_CHECKOUT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.access_token || ''}`,
+        },
+        body: JSON.stringify({
+          priceId: PRICE_IDS[tier],
+          userId: userId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('Failed to create Stripe Checkout session:', data.error);
+        toast({
+          title: "Error starting subscription",
+          description: "Failed to create the Stripe checkout session.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('An error occurred during upgrade:', error);
+      toast({
+        title: "An unexpected error occurred",
+        description: "Please check your network and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsUpgrading(false);
     }
   };
 
@@ -95,7 +151,6 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const currentPassword = formData.get('currentPassword') as string;
     const newPassword = formData.get('newPassword') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
 
@@ -137,6 +192,12 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
 
     setIsLoading(false);
   };
+  
+  const getButtonText = () => {
+    if (isUpgrading) return "Redirecting...";
+    if (profile?.subscription_status === 'premium') return "Current Plan";
+    return profile?.subscription_status ? "Change Plan" : "Subscribe Now";
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -157,14 +218,6 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                 </DialogDescription>
               </div>
             </div>
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button> */}
           </div>
         </DialogHeader>
 
@@ -180,7 +233,7 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
             <TabsList className="grid w-full grid-cols-3 glass mb-6">
               <TabsTrigger 
                 value="profile"
-className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black data-[state=active]:to-gray-800 data-[state=active]:text-white"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black data-[state=active]:to-gray-800 data-[state=active]:text-white"
               >
                 Profile
               </TabsTrigger>
@@ -329,16 +382,16 @@ className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black d
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {profile?.subscription_status === 'premium' ? (
-                        <Crown className="h-5 w-5 text-primary" />
-                      ) : (
-                        <Button size="sm" className="gradient-primary text-primary-foreground">
-                          Upgrade to Premium
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        className="gradient-primary text-primary-foreground"
+                        onClick={() => setIsPricingModalOpen(true)}
+                        disabled={isUpgrading}
+                      >
+                        {getButtonText()}
+                      </Button>
                     </div>
                   </div>
-                  
                   <div className="flex items-center justify-between p-4 glass rounded-lg">
                     <div>
                       <h3 className="font-medium flex items-center gap-2">
@@ -363,6 +416,90 @@ className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black d
           </Tabs>
         )}
       </DialogContent>
+      
+      {/* New Pricing Modal */}
+      <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
+        <DialogContent className="max-w-3xl glass border-primary/20">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Choose Your Plan</DialogTitle>
+            <DialogDescription>
+              Select the perfect plan for your needs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 md:grid-cols-3">
+             {/* Basic Tier Card */}
+             <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'basic' ? 'border-2 border-primary shadow-glow' : ''}`}>
+                <CardHeader className="text-center pb-2">
+                  <h4 className="font-bold text-lg">Basic</h4>
+                  <p className="text-xl font-semibold mt-1">$0<span className="text-sm text-muted-foreground">/month</span></p>
+                  <CardDescription className="text-sm">Perfect for getting started.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="text-left text-sm space-y-2 mb-4">
+                    <li>• Manual cycle tracking</li>
+                    <li>• Basic period predictions</li>
+                    <li>• Limited AI Chatbot access</li>
+                  </ul>
+                  <Button 
+                    size="sm" 
+                    disabled={isUpgrading || profile?.subscription_status === 'basic'}
+                    className="w-full gradient-basic"
+                  >
+                    {profile?.subscription_status === 'basic' ? "Current Plan" : "Get Basic"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+             {/* Pro Tier Card */}
+             <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'pro' ? 'border-2 border-primary shadow-glow' : ''}`}>
+                <CardHeader className="text-center pb-2">
+                  <h4 className="font-bold text-lg">Pro</h4>
+                  <p className="text-xl font-semibold mt-1">$15<span className="text-sm text-muted-foreground">/month</span></p>
+                  <CardDescription className="text-sm">Advanced features for power users.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="text-left text-sm space-y-2 mb-4">
+                    <li>• Unlimited cycle tracking</li>
+                    <li>• Advanced period predictions</li>
+                    <li>• AI Chatbot with history</li>
+                  </ul>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleUpgradeClick('pro')}
+                    disabled={isUpgrading || profile?.subscription_status === 'pro'}
+                    className="w-full gradient-pro"
+                  >
+                    {profile?.subscription_status === 'pro' ? "Current Plan" : isUpgrading ? "Redirecting..." : "Upgrade to Pro"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Premium Tier Card */}
+              <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'premium' ? 'border-2 border-primary shadow-glow' : ''}`}>
+                <CardHeader className="text-center pb-2">
+                  <h4 className="font-bold text-lg">Premium</h4>
+                  <p className="text-xl font-semibold mt-1">$25<span className="text-sm text-muted-foreground">/month</span></p>
+                  <CardDescription className="text-sm">Everything in Pro, plus exclusive benefits.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <ul className="text-left text-sm space-y-2 mb-4">
+                    <li>• All Pro features</li>
+                    <li>• Outlook and Google Calendar sync</li>
+                    <li>• Priority customer support</li>
+                  </ul>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleUpgradeClick('premium')}
+                    disabled={isUpgrading || profile?.subscription_status === 'premium'}
+                    className="w-full gradient-premium"
+                  >
+                    {profile?.subscription_status === 'premium' ? "Current Plan" : isUpgrading ? "Redirecting..." : "Upgrade to Premium"}
+                  </Button>
+                </CardContent>
+              </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 };

@@ -339,7 +339,8 @@ const syncCalendar = async () => {
 
     let totalSynced = 0;
     let totalExisting = 0;
-    const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number; existingCount?: number }> = [];
+    let totalDeleted = 0;
+    const results: Array<{ provider: 'Google' | 'Outlook'; syncedCount?: number; existingCount?: number; deletedCount?: number }> = [];
 
     // Helper for syncing a provider
     const syncProvider = async (provider: 'google' | 'outlook') => {
@@ -356,13 +357,14 @@ const syncCalendar = async () => {
       });
 
       if (response.ok) {
-        // The edge function returns { message, result: { syncedCount, existingCount, ... } }
+        // The edge function returns { message, result: { syncedCount, existingCount, deletedCount, ... } }
         // Handle both nested and flat results defensively
         const json = await response.json();
         const parsedResult = json?.result ?? json;
         results.push({ provider: provider === 'google' ? 'Google' : 'Outlook', ...parsedResult });
         totalSynced += parsedResult.syncedCount || 0;
         totalExisting += parsedResult.existingCount || 0;
+        totalDeleted += parsedResult.deletedCount || 0;
       } else {
         console.error(`${provider} sync failed`, await response.text());
       }
@@ -376,25 +378,30 @@ const syncCalendar = async () => {
       await syncProvider('outlook');
     }
 
-    // Show appropriate toast
-    if (totalSynced > 0) {
+    // Show appropriate toast based on what happened
+    if (totalDeleted > 0) {
       toast({
-        title: "Calendars Synced",
-        description: "Your calendars have been successfully synchronized.",
+        title: "Calendar Synced",
+        description: `Synced successfully. ${totalSynced} new events added, ${totalDeleted} deleted events removed.`,
+      });
+    } else if (totalSynced > 0) {
+      toast({
+        title: "Calendar Synced",
+        description: `Successfully synced ${totalSynced} new events from your calendar(s).`,
       });
     } else if (totalExisting > 0) {
       toast({
-        title: "Calendars Synced",
-        description: "Your calendars have been successfully synchronized.",
+        title: "Calendar Synced",
+        description: "Your calendars are up to date. No new events found.",
       });
     } else {
       toast({
-        title: "Calendars Synced",
-        description: "Your calendars have been successfully synchronized.",
+        title: "Calendar Synced",
+        description: "Your calendars have been synchronized.",
       });
     }
 
-    return { results, totalSynced, totalExisting };
+    return { results, totalSynced, totalExisting, totalDeleted };
 
   } catch (error) {
     console.error('Calendar sync error:', error);

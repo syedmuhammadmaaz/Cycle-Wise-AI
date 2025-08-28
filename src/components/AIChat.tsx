@@ -8,10 +8,16 @@ import { X, Send, Bot, User, Sparkles, Heart, Brain, Activity, Shield, Zap, Mess
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCalendarStore } from '@/store/calendarStore'
 import { fetchUserCycleEvents } from '@/lib/calendarClient'
-import type { CalendarEvent } from '@/store/calendarStore'
 import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Define CalendarEvent interface locally to match the store
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  start_date: string;
+}
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'welcome',
@@ -54,6 +60,7 @@ const AIChat = ({ onClose }: AIChatProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingMessage, setPendingMessage] = useState<string>('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -80,7 +87,7 @@ const AIChat = ({ onClose }: AIChatProps) => {
     const timeoutId = setTimeout(scrollToBottom, 100);
     
     return () => clearTimeout(timeoutId);
-  }, [messages]);
+  }, [messages, pendingMessage]);
 
   const fetchChatHistory = async () => {
     try {
@@ -93,12 +100,26 @@ const AIChat = ({ onClose }: AIChatProps) => {
 
       if (error) throw error;
       if (!data || data.length === 0) {
+        // If no chat history, show welcome message
         setMessages([WELCOME_MESSAGE]);
       } else {
-        setMessages(data);
+        // If there's chat history, check if welcome message exists
+        const hasWelcomeMessage = data.some(msg => 
+          msg.response.includes("I am Charlie, your AI health coach") && 
+          msg.message === ''
+        );
+        
+        if (!hasWelcomeMessage) {
+          // Add welcome message at the beginning if it doesn't exist
+          setMessages([WELCOME_MESSAGE, ...data]);
+        } else {
+          setMessages(data);
+        }
       }
     } catch (err) {
       console.error('Error fetching chat history:', err);
+      // Show welcome message on error
+      setMessages([WELCOME_MESSAGE]);
     }
   };
 
@@ -133,7 +154,11 @@ const generateAIResponse = async (
 
     setIsLoading(true);
     const userMessage = inputMessage.trim();
+    
+    // Store the pending message to show while processing
+    setPendingMessage(userMessage);
     setInputMessage('');
+    
     //  Pull events from global state
     const calendarEvents = useCalendarStore.getState().events;
 
@@ -158,6 +183,7 @@ const generateAIResponse = async (
       console.error('Error saving chat message:', error);
     } finally {
       setIsLoading(false);
+      setPendingMessage(''); // Clear pending message after processing
     }
   };
 
@@ -487,6 +513,52 @@ const generateAIResponse = async (
                 </motion.div>
               ))}
             </AnimatePresence>
+
+            {/* Show pending message while processing */}
+            {pendingMessage && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <div className="flex justify-end">
+                  <div className="max-w-[80%] relative group">
+                    <motion.div
+                      className="relative bg-gradient-to-r from-primary via-primary/95 to-primary/90 text-primary-foreground rounded-2xl rounded-br-md p-4 shadow-lg opacity-80"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      {/* Animated border */}
+                      <div className="absolute -right-1 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-cyan-500 to-teal-500 rounded-r-full">
+                        <motion.div
+                          className="w-full h-2 bg-white/50 rounded-full"
+                          animate={{ y: [0, "100%", 0] }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      </div>
+                      <p className="text-sm leading-relaxed relative z-10">{pendingMessage}</p>
+                      {/* Hover effect */}
+                      <motion.div
+                        className="absolute inset-0 bg-white/10 rounded-2xl rounded-br-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        initial={false}
+                      />
+                    </motion.div>
+                    <div className="flex items-center gap-2 justify-end mt-2">
+                      <motion.div
+                        className="w-6 h-6 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center"
+                        whileHover={{ scale: 1.2, rotate: 15 }}
+                      >
+                        <User className="h-3 w-3 text-primary" />
+                      </motion.div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        <span>Just now</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {isLoading && (
               <motion.div 

@@ -224,7 +224,9 @@ async function fetchOutlookEvents(accessToken, user_id) {
 }
 async function processCalendarEvents(events, user_id, provider) {
   console.log(`_______________${provider} EVENTS_______________`);
+  console.log(`Total events fetched from ${provider}: ${events.length}`);
   console.log(events.reverse());
+  
   // Cycle filtering keywords
   const cycleKeywords = [
     'period',
@@ -245,16 +247,26 @@ async function processCalendarEvents(events, user_id, provider) {
   let cycleEvents = [];
   let syncedCount = 0;
   let existingCount = 0;
+  let deletedCount = 0;
+  
   // Fetch existing cycle events to compare
-  const { data: existingEvents } = await supabase.from('cycles').select('google_event_id').eq('user_id', user_id);
-  const existingIds = existingEvents.map((event)=>event.google_event_id);
+  const { data: existingEvents } = await supabase.from('cycles').select('id, google_event_id, provider').eq('user_id', user_id);
+  console.log(`Existing events in database for user ${user_id}: ${existingEvents?.length || 0}`);
+  
+  const existingIds = existingEvents?.map((event) => event.google_event_id) || [];
+  
+  // Get all cycle-related event IDs from Google Calendar
+  const googleCycleEventIds = [];
+  
   // Filter events based on cycle keywords
-  for (let thisEvent of events){
+  for (let thisEvent of events) {
     let thisEventTitle = provider.toLowerCase() === 'google' ? thisEvent.summary : thisEvent.subject;
     if (thisEventTitle) {
       let lowerTitle = thisEventTitle.toLowerCase();
-      if (cycleKeywords.some((keyword)=>lowerTitle.includes(keyword))) {
+      if (cycleKeywords.some((keyword) => lowerTitle.includes(keyword))) {
         console.log(`Event found: ${thisEventTitle}`);
+        googleCycleEventIds.push(thisEvent.id);
+        
         if (!existingIds.includes(thisEvent.id)) {
           console.log(`[New Event] ➕ Matched summary: "${thisEventTitle}"`);
           cycleEvents.push(thisEvent);
@@ -265,20 +277,54 @@ async function processCalendarEvents(events, user_id, provider) {
       }
     }
   }
+  
+  console.log(`Cycle-related events found in ${provider}: ${googleCycleEventIds.length}`);
+  console.log(`New events to add: ${cycleEvents.length}`);
+  
+  // Find events that exist in our database but not in Google Calendar (deleted events)
+  const eventsToDelete = existingEvents?.filter(event => 
+    event.google_event_id && 
+    !googleCycleEventIds.includes(event.google_event_id) &&
+    event.provider === provider
+  ) || [];
+  
+  console.log(`Events to delete (removed from ${provider}): ${eventsToDelete.length}`);
+  
+  // Delete events that were removed from Google Calendar
+  if (eventsToDelete.length > 0) {
+    console.log(`🗑️ Deleting ${eventsToDelete.length} events that were removed from ${provider} Calendar:`);
+    for (const eventToDelete of eventsToDelete) {
+      console.log(`   - Deleting event ID: ${eventToDelete.id} (Google Event ID: ${eventToDelete.google_event_id})`);
+    }
+    
+    const eventIdsToDelete = eventsToDelete.map(event => event.id);
+    const { error: deleteError } = await supabase
+      .from('cycles')
+      .delete()
+      .in('id', eventIdsToDelete);
+    
+    if (deleteError) {
+      console.error('❌ Error deleting removed events:', deleteError);
+    } else {
+      deletedCount = eventsToDelete.length;
+      console.log(`✅ Successfully deleted ${deletedCount} events that were removed from ${provider} Calendar`);
+    }
+  }
+  
   let rows = [];
   // If there are any new cycle events, prepare to insert into Supabase
   if (cycleEvents.length > 0) {
-    rows = cycleEvents.map((ev)=>({
-        user_id,
-        provider,
-        start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
-        end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
-        cycle_length: null,
-        period_length: null,
-        symptoms: null,
-        notes: `Imported from ${provider} Calendar: ${ev.summary}`,
-        google_event_id: ev.id || ''
-      }));
+    rows = cycleEvents.map((ev) => ({
+      user_id,
+      provider,
+      start_date: ev.start?.dateTime ? ev.start.dateTime.split('T')[0] : ev.start?.date || null,
+      end_date: ev.end?.dateTime ? ev.end.dateTime.split('T')[0] : ev.end?.date || null,
+      cycle_length: null,
+      period_length: null,
+      symptoms: null,
+      notes: `Imported from ${provider} Calendar: ${ev.summary}`,
+      google_event_id: ev.id || ''
+    }));
     const { data, error } = await supabase.from('cycles').insert(rows).select();
     if (error) {
       console.error('❌ Error inserting cycle events:', error);
@@ -289,12 +335,21 @@ async function processCalendarEvents(events, user_id, provider) {
   } else {
     console.log('No new cycle events to sync.');
   }
+  
+  console.log(`📊 Sync Summary for ${provider}:`);
+  console.log(`   - Total events processed: ${events.length}`);
+  console.log(`   - Cycle events found: ${googleCycleEventIds.length}`);
+  console.log(`   - New events added: ${syncedCount}`);
+  console.log(`   - Existing events: ${existingCount}`);
+  console.log(`   - Events deleted: ${deletedCount}`);
+  
   // Return the counts for feedback
   return {
     totalEvents: events.length,
     cycleEvents: cycleEvents.length,
     syncedCount,
     existingCount,
+    deletedCount,
     rows
   };
 }

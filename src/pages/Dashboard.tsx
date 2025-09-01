@@ -14,7 +14,7 @@ import {
   Settings, 
   Crown,
   Plus,
-    TrendingUp,
+  TrendingUp,
   Activity,
   Users
 } from 'lucide-react';
@@ -52,7 +52,7 @@ const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCycleForm, setShowCycleForm] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
-   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
 
   const { events, setEvents } = useCalendarStore();
 
@@ -66,8 +66,30 @@ const Dashboard = () => {
 
   const loadEvents = async () => {
     if (!user?.id) return;
-    const calendarEvents = await fetchUserCycleEvents(user.id);
-    setEvents(calendarEvents);
+    
+    const { data, error } = await supabase
+      .from('cycles')
+      .select('start_date, period_length');
+    
+    if (error) {
+      console.error('Error fetching cycles for calendar:', error);
+      return;
+    }
+    
+    const allHighlightedDates: Date[] = [];
+    
+    data.forEach(cycle => {
+      const startDate = new Date(cycle.start_date);
+      const periodLength = cycle.period_length || 5;
+      
+      for (let i = 0; i < periodLength; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        allHighlightedDates.push(date);
+      }
+    });
+
+    setEvents(allHighlightedDates);
   };
 
   const fetchProfile = async () => {
@@ -80,16 +102,19 @@ const Dashboard = () => {
 
       if (error) throw error;
       setProfile(data);
+      
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
-const formatDate = (dateString) => {
-  const date = new Date(dateString);
-  const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-  const localDate = new Date(date.getTime() + userTimezoneOffset);
-  return localDate.toLocaleDateString();
-};
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() + userTimezoneOffset);
+    return localDate.toLocaleDateString();
+  };
+
   const fetchCycles = async () => {
     try {
       const { data, error } = await supabase
@@ -223,7 +248,7 @@ const formatDate = (dateString) => {
                         <div>
                           <div className="font-medium">
                             {formatDate(cycle.start_date)}
-{cycle.end_date && ` - ${formatDate(cycle.end_date)}`}
+                            {cycle.end_date && ` - ${formatDate(cycle.end_date)}`}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {cycle.cycle_length && `${cycle.cycle_length} day cycle`}
@@ -274,7 +299,7 @@ const formatDate = (dateString) => {
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
-                  highlightedDates={events.map(e => new Date(e.start_date))}
+                  highlightedDates={events}
                   className="rounded-md border-0"
                 />
               </CardContent>
@@ -315,9 +340,11 @@ const formatDate = (dateString) => {
             <CalendarConnection 
               googleConnected={profile?.google_calendar_connected || false}
               outlookConnected={profile?.outlook_calendar_connected || false}
-              onConnectionChange={() => {
-                fetchProfile();
-                loadEvents(); // re-load highlights
+              // This is the key change: make the callback async
+              onConnectionChange={async () => {
+                await fetchProfile();
+                await fetchCycles(); // Add this line
+                await loadEvents();
               }}
             />
           </div>
@@ -346,10 +373,14 @@ const formatDate = (dateString) => {
       {showProfileSettings && (
         <ProfileSettings 
           isOpen={showProfileSettings}
-          onClose={() => setShowProfileSettings(false)} 
+          onClose={() => {
+            setShowProfileSettings(false);
+            fetchProfile();
+          }}
+          // profile={profile}
+          onProfileUpdated={fetchProfile}
         />
       )}
-      
     </div>
   );
 };

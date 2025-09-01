@@ -10,10 +10,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { User, Mail, Crown, Shield, Calendar, X } from 'lucide-react';
+import { cloneUniformsGroups } from 'three/src/renderers/shaders/UniformsUtils.js';
 
 interface ProfileSettingsProps {
   isOpen: boolean;
   onClose: () => void;
+  onProfileUpdated?: () => void;
 }
 
 interface Profile {
@@ -24,7 +26,7 @@ interface Profile {
   google_calendar_connected: boolean;
 }
 
-const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
+const ProfileSettings = ({ isOpen, onClose , onProfileUpdated}: ProfileSettingsProps) => {
   const { user, updatePassword } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +61,7 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
     }
   };
 
-  const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
+ const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -74,7 +76,14 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
 
       if (error) throw error;
 
+      // Update local state immediately for a snappier UI
       setProfile(prev => prev ? { ...prev, full_name: fullName } : null);
+
+      // Call the callback function to notify the parent component
+      if (onProfileUpdated) {
+        onProfileUpdated();
+      }
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully."
@@ -137,7 +146,7 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
 
     setIsLoading(false);
   };
-
+console.log(profile ,user , "here ar ethe thing ")
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto glass border-primary/20">
@@ -216,7 +225,7 @@ className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black d
                       <Input
                         id="fullName"
                         name="fullName"
-                        defaultValue={profile?.full_name || ''}
+                        defaultValue={profile?.full_name ||user?.identities[0].identity_data?.full_name ||''}
                         placeholder="Enter your full name"
                         className="glass border-primary/20 focus:border-primary"
                       />

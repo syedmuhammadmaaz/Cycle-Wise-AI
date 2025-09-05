@@ -144,8 +144,91 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t bg-card/50 backdrop-blur">
         <div className="container mx-auto px-4 py-8">
-          <div className="text-center text-muted-foreground">
-            <p>&copy; 2025 CycleWise AI. Your wellness journey starts here.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+            {/* Company Info */}
+            <div className="text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+                <Heart className="h-6 w-6 text-primary" />
+                <h3 className="text-lg font-semibold">CycleWise AI</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your personal menstrual cycle companion with AI-powered health guidance.
+              </p>
+            </div>
+
+            {/* Quick Links */}
+            <div className="text-center">
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <div className="space-y-2">
+                <div>
+                  <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                    Get Started
+                  </Link>
+                </div>
+                <div>
+                  <Link to="/dashboard" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                    Dashboard
+                  </Link>
+                </div>
+                <div>
+                  <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                    Privacy Policy
+                  </Link>
+                </div>
+                <div>
+                  <Link to="/terms" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                    Terms of Service
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div className="text-center md:text-right">
+              <h4 className="font-semibold mb-4">Contact</h4>
+              <div className="space-y-2">
+                <div>
+                  <a 
+                    href="mailto:maaz@remap.ai" 
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    maaz@remap.ai
+                  </a>
+                </div>
+                <div>
+                  <a 
+                    href="mailto:privacy@cyclewise.ai" 
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Privacy Inquiries
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t pt-6">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-muted-foreground">
+                &copy; 2025 CycleWise AI. Your wellness journey starts here.
+              </p>
+              <div className="flex gap-6 text-sm">
+                <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
+                  Privacy Policy
+                </Link>
+                <span className="text-muted-foreground">•</span>
+                <Link to="/terms" className="text-muted-foreground hover:text-primary transition-colors">
+                  Terms of Service
+                </Link>
+                <span className="text-muted-foreground">•</span>
+                <a 
+                  href="mailto:maaz@remap.ai" 
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Contact
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </footer>

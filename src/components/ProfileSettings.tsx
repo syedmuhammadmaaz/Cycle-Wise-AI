@@ -5,31 +5,39 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { User, Mail, Crown, Shield, Calendar, X } from 'lucide-react';
+import { User, Crown, Shield, Calendar, RefreshCw } from 'lucide-react';
 
 interface ProfileSettingsProps {
   isOpen: boolean;
   onClose: () => void;
+  profile?: any;
+  onProfileUpdated?: any;
 }
 
 interface Profile {
   id: string;
+  user_id: string;
   full_name: string;
   email: string;
   subscription_status: string;
   google_calendar_connected: boolean;
+  stripe_customer_id?: string;
+  stripe_subscription_id?: string;
+  updated_at?: string;
 }
+
+// ⚠️ IMPORTANT: Replace with your actual Stripe Price IDs from the Stripe Dashboard
 const PRICE_IDS = {
-premium: 'price_1234567890ABCDEF',
-pro: 'price_ABCDEF1234567890', 
-basic: 'price_0987654321FEDCBA', 
+  premium: 'price_1S04gjHtLjP6FpI4UvNKxybT', // <-- Replace with your Premium Price ID
+  pro: 'price_1S04gaHtLjP6FpI4M4h1FBpT',      // <-- Replace with your Pro Price ID
+  basic: 'price_1S01fsHtLjP6FpI4W6DqbluW',      // <-- Replace with your Basic Price ID
 };
 
-const SUPABASE_CHECKOUT_URL = 'https://[your-project-ref].supabase.co/functions/v1/create-checkout-session';
+// ⚠️ IMPORTANT: Replace with the URL of your deployed 'create-checkout-session' Edge Function
+const SUPABASE_CHECKOUT_URL = 'https://xmbqbdyodnxjqxqgeaor.supabase.co/functions/v1/create-checkout-session';
 
 const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
   const { user, updatePassword } = useAuth();
@@ -37,24 +45,67 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
+  const [loadingTier, setLoadingTier] = useState<string | null>(null);
+  const [session, setSession] = useState(null);
 
   useEffect(() => {
     if (isOpen && user) {
       fetchProfile();
+      fetchSession();
+      
+      // Check for success/cancel parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        toast({
+          title: "Payment successful!",
+          description: "Your subscription has been activated. It may take a few moments to update.",
+        });
+        // Remove the success parameter from URL
+        window.history.replaceState({}, '', window.location.pathname);
+        
+        // Wait a bit then refresh profile data
+        setTimeout(() => {
+          fetchProfile();
+        }, 2000);
+      } else if (urlParams.get('canceled') === 'true') {
+        toast({
+          title: "Payment canceled",
+          description: "Your subscription was not activated.",
+          variant: "destructive"
+        });
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
   }, [isOpen, user]);
 
+  const fetchSession = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+    } catch (error) {
+      console.error('Error fetching session:', error);
+    }
+  };
+
   const fetchProfile = async () => {
+    if (!user?.id) return;
+    
     try {
       setIsLoadingProfile(true);
+      console.log('Fetching profile for user:', user.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user?.id)
+        .eq('user_id', user.id)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Profile fetch error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched profile data:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -68,69 +119,162 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
     }
   };
 
-  const handleUpgradeClick = async (tier) => {
-    setIsUpgrading(true);
-    const userId = user?.id;
+  const handleRefreshProfile = async () => {
+    await fetchProfile();
+    toast({
+      title: "Profile refreshed",
+      description: "Your profile information has been updated."
+    });
+  };
 
-    if (!userId || !PRICE_IDS[tier]) {
+  const handleUpgradeClick = async (tier: string) => {
+    if (!session?.access_token) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in again to continue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoadingTier(tier);
+    const userId = user?.id;
+    const priceId = PRICE_IDS[tier as keyof typeof PRICE_IDS];
+
+    console.log('Upgrading to tier:', tier);
+    console.log('Using price ID:', priceId);
+    console.log('User ID:', userId);
+
+    if (!userId || !priceId) {
       console.error('User ID or price ID is missing.');
-      setIsUpgrading(false);
+      toast({
+        title: "Configuration error",
+        description: "Missing required information for upgrade.",
+        variant: "destructive"
+      });
+      setLoadingTier(null);
       return;
     }
 
     try {
+      const requestBody = {
+        priceId: priceId,
+        userId: userId,
+      };
+
+      console.log('Sending request to checkout URL:', SUPABASE_CHECKOUT_URL);
+      console.log('Request body:', requestBody);
+
       const response = await fetch(SUPABASE_CHECKOUT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.access_token || ''}`,
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          priceId: PRICE_IDS[tier],
-          userId: userId,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log('Checkout response status:', response.status);
       const data = await response.json();
+      console.log('Checkout response data:', data);
 
       if (response.ok && data.url) {
+        console.log('Redirecting to Stripe Checkout:', data.url);
+        // Open Stripe Checkout in the same window
         window.location.href = data.url;
       } else {
-        console.error('Failed to create Stripe Checkout session:', data.error);
+        console.error('Failed to create Stripe Checkout session:', data);
         toast({
           title: "Error starting subscription",
-          description: "Failed to create the Stripe checkout session.",
+          description: data.error || "Failed to create the Stripe checkout session.",
           variant: "destructive"
         });
       }
     } catch (error) {
       console.error('An error occurred during upgrade:', error);
       toast({
-        title: "An unexpected error occurred",
-        description: "Please check your network and try again.",
+        title: "Network error",
+        description: "Please check your connection and try again.",
         variant: "destructive"
       });
     } finally {
-      setIsUpgrading(false);
+      setLoadingTier(null);
+    }
+  };
+
+  const handleFreePlan = async () => {
+    if (!user?.id) return;
+    
+    setLoadingTier('basic');
+    try {
+      console.log('Downgrading to basic plan for user:', user.id);
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ 
+          subscription_status: 'basic',
+          stripe_subscription_id: null,
+          stripe_customer_id: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .select();
+
+      if (error) {
+        console.error('Error updating to basic plan:', error);
+        throw error;
+      }
+
+      console.log('Successfully updated to basic plan:', data);
+      await fetchProfile();
+      toast({
+        title: "Plan updated",
+        description: "Your plan has been changed to Basic.",
+      });
+      setIsPricingModalOpen(false);
+    } catch (error) {
+      console.error('Error updating plan:', error);
+      toast({
+        title: "Error updating plan",
+        description: "Failed to change your plan. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingTier(null);
     }
   };
 
   const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!user?.id) return;
+    
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
     const fullName = formData.get('fullName') as string;
 
+    if (!fullName.trim()) {
+      toast({
+        title: "Validation error",
+        description: "Full name is required.",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName })
-        .eq('user_id', user?.id);
+        .update({ 
+          full_name: fullName.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, full_name: fullName } : null);
+      setProfile(prev => prev ? { ...prev, full_name: fullName.trim() } : null);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully."
@@ -174,30 +318,122 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
       return;
     }
 
-    const { error } = await updatePassword(newPassword);
+    try {
+      const { error } = await updatePassword(newPassword);
 
-    if (error) {
-      toast({
-        title: "Error updating password",
-        description: error.message,
-        variant: "destructive"
-      });
-    } else {
+      if (error) {
+        throw error;
+      }
+
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully."
       });
       (e.target as HTMLFormElement).reset();
+    } catch (error: any) {
+      toast({
+        title: "Error updating password",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
   
   const getButtonText = () => {
-    if (isUpgrading) return "Redirecting...";
-    if (profile?.subscription_status === 'premium') return "Current Plan";
-    return profile?.subscription_status ? "Change Plan" : "Subscribe Now";
-  }
+    if (profile?.subscription_status === 'premium' || profile?.subscription_status === 'pro') {
+      return "Change Plan";
+    }
+    return "Subscribe Now";
+  };
+
+  const getTierButton = (tier: string) => {
+    const currentStatus = profile?.subscription_status || 'basic';
+    const isCurrentPlan = currentStatus === tier;
+    const isUpgradingThisTier = loadingTier === tier;
+    const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+
+    if (isCurrentPlan) {
+      return (
+        <Button size="sm" disabled className="w-full bg-green-600 text-white">
+          ✓ Current Plan
+        </Button>
+      );
+    }
+
+    if (isUpgradingThisTier) {
+      return (
+        <Button size="sm" disabled className="w-full">
+          {tier === 'basic' ? 'Updating...' : 'Redirecting to payment...'}
+        </Button>
+      );
+    }
+    
+    if (tier === 'basic') {
+      return (
+        <Button
+          size="sm"
+          onClick={handleFreePlan}
+          variant="outline"
+          className="w-full border-pink-500 text-pink-600 bg-pink-200"
+        >
+          Downgrade to Basic
+        </Button>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        onClick={() => handleUpgradeClick(tier)}
+        className={`w-full ${tier === 'pro' ? 'bg-pink-200 border-pink-500 hover:bg-pink-300' : 'bg-pink-200 border-pink-500 hover:bg-pink-300'} broder-pink-500 text-pink-600`}
+      >
+        {`Upgrade to ${tierName}`}
+      </Button>
+    );
+  };
+
+  const getPlanFeatures = (tier: string) => {
+    switch (tier) {
+      case 'basic':
+        return [
+          'Manual cycle tracking',
+          'Limited cycle tracking',
+          'Basic period predictions',
+          'Limited AI Chatbot access'
+        ];
+      case 'pro':
+        return [
+          'Everything in Basic',
+          'Unlimited cycle tracking',
+          'Advanced period predictions',
+          'AI Chatbot with history'
+        ];
+      case 'premium':
+        return [
+          'Everything in Pro',
+          'Google Calendar sync',
+          'Outlook Calendar sync',
+          'Priority customer support'
+        ];
+      default:
+        return [];
+    }
+  };
+
+  const getPlanPrice = (tier: string) => {
+    switch (tier) {
+      case 'basic':
+        return '$0';
+      case 'pro':
+        return '$50';
+      case 'premium':
+        return '$100';
+      default:
+        return '$0';
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -213,11 +449,20 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                 <DialogTitle className="text-2xl gradient-primary bg-clip-text text-transparent">
                   Profile & Settings
                 </DialogTitle>
-                <DialogDescription className="text-base text-muted-foreground">
+                <DialogDescription className="text-base text-muted-foreground mb-2 ">
                   Manage your account settings and preferences
                 </DialogDescription>
               </div>
             </div>
+            {/* <Button
+              variant="outline" 
+              size="sm"
+              onClick={handleRefreshProfile}
+              disabled={isLoadingProfile}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoadingProfile ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button> */}
           </div>
         </DialogHeader>
 
@@ -231,19 +476,19 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
         ) : (
           <Tabs defaultValue="profile" className="w-full">
             <TabsList className="grid w-full grid-cols-3 glass mb-6">
-              <TabsTrigger 
+              <TabsTrigger
                 value="profile"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black data-[state=active]:to-gray-800 data-[state=active]:text-white"
               >
                 Profile
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="security"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black data-[state=active]:to-gray-800 data-[state=active]:text-white"
               >
                 Security
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="subscription"
                 className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-black data-[state=active]:to-gray-800 data-[state=active]:text-white"
               >
@@ -272,6 +517,7 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                         defaultValue={profile?.full_name || ''}
                         placeholder="Enter your full name"
                         className="glass border-primary/20 focus:border-primary"
+                        required
                       />
                     </div>
                     <div className="space-y-2">
@@ -287,8 +533,8 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                         Email cannot be changed from this interface
                       </p>
                     </div>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       className="gradient-primary text-primary-foreground shadow-glow hover-lift"
                     >
@@ -343,8 +589,8 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                         className="glass border-primary/20 focus:border-primary"
                       />
                     </div>
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={isLoading}
                       className="gradient-primary text-primary-foreground shadow-glow hover-lift"
                     >
@@ -378,15 +624,20 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                     <div>
                       <h3 className="font-medium">Current Plan</h3>
                       <p className="text-sm text-muted-foreground capitalize">
-                        {profile?.subscription_status || 'Free'} Plan
+                        {profile?.subscription_status || 'Basic'} Plan
                       </p>
+                      {profile?.stripe_subscription_id && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ID: {profile.stripe_subscription_id.slice(0, 20)}...
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Button
                         size="sm"
                         className="gradient-primary text-primary-foreground"
                         onClick={() => setIsPricingModalOpen(true)}
-                        disabled={isUpgrading}
+                        disabled={!!loadingTier}
                       >
                         {getButtonText()}
                       </Button>
@@ -410,6 +661,14 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
                       )}
                     </div>
                   </div>
+                  
+                  <div className="p-4 bg-gray-100 rounded-lg text-xs">
+                    <h4 className="font-medium mb-2">Debug Info (Will remove in production):</h4>
+                    <p>User ID: {user?.id}</p>
+                    <p>Subscription Status: {profile?.subscription_status || 'Not set'}</p>
+                    <p>Stripe Customer ID: {profile?.stripe_customer_id || 'Not set'}</p>
+                    <p>Last Updated: {profile?.updated_at ? new Date(profile.updated_at).toLocaleString() : 'Not set'}</p>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -417,89 +676,89 @@ const ProfileSettings = ({ isOpen, onClose }: ProfileSettingsProps) => {
         )}
       </DialogContent>
       
-      {/* New Pricing Modal */}
+      {/* Pricing Modal */}
       <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
-        <DialogContent className="max-w-3xl glass border-primary/20">
+        <DialogContent className="max-w-4xl glass-content border-primary/20">
           <DialogHeader>
             <DialogTitle className="text-2xl">Choose Your Plan</DialogTitle>
             <DialogDescription>
-              Select the perfect plan for your needs.
+              Select the perfect plan for your needs. Changes take effect immediately.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-3">
              {/* Basic Tier Card */}
-             <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'basic' ? 'border-2 border-primary shadow-glow' : ''}`}>
-                <CardHeader className="text-center pb-2">
-                  <h4 className="font-bold text-lg">Basic</h4>
-                  <p className="text-xl font-semibold mt-1">$0<span className="text-sm text-muted-foreground">/month</span></p>
+             <Card className={`glass-card p-6 transition-all duration-300 ${profile?.subscription_status === 'basic' || !profile?.subscription_status ? 'border-2 border-green-500 shadow-glow' : 'border border-gray-200'}`}>
+                <CardHeader className="text-center pb-4">
+                  <h4 className="font-bold text-xl">Basic</h4>
+                  <p className="text-3xl font-bold mt-2">$0<span className="text-sm text-muted-foreground font-normal">/month</span></p>
                   <CardDescription className="text-sm">Perfect for getting started.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="text-left text-sm space-y-2 mb-4">
-                    <li>• Manual cycle tracking</li>
-                    <li>• Basic period predictions</li>
-                    <li>• Limited AI Chatbot access</li>
+                <CardContent className="space-y-4">
+                  <ul className="text-left text-sm space-y-3 mb-6">
+                    {getPlanFeatures('basic').map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-green-500 mt-0.5">•</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
-                  <Button 
-                    size="sm" 
-                    disabled={isUpgrading || profile?.subscription_status === 'basic'}
-                    className="w-full gradient-basic"
-                  >
-                    {profile?.subscription_status === 'basic' ? "Current Plan" : "Get Basic"}
-                  </Button>
+                  {getTierButton('basic')}
                 </CardContent>
               </Card>
 
              {/* Pro Tier Card */}
-             <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'pro' ? 'border-2 border-primary shadow-glow' : ''}`}>
-                <CardHeader className="text-center pb-2">
-                  <h4 className="font-bold text-lg">Pro</h4>
-                  <p className="text-xl font-semibold mt-1">$15<span className="text-sm text-muted-foreground">/month</span></p>
+             <Card className={`glass-card p-6 transition-all duration-300 ${profile?.subscription_status === 'pro' ? 'border-2 border-green-500 shadow-glow' : 'border border-pink-400'}`}>
+                <CardHeader className="text-center pb-4">
+                  <h4 className="font-bold text-xl">Pro</h4>
+                  <p className="text-3xl font-bold mt-2">$15<span className="text-sm text-muted-foreground font-normal">/month</span></p>
                   <CardDescription className="text-sm">Advanced features for power users.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="text-left text-sm space-y-2 mb-4">
-                    <li>• Unlimited cycle tracking</li>
-                    <li>• Advanced period predictions</li>
-                    <li>• AI Chatbot with history</li>
+                <CardContent className="space-y-4">
+                  <ul className="text-left text-sm space-y-3 mb-6">
+                    {getPlanFeatures('pro').map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-blue-500 mt-0.5">•</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleUpgradeClick('pro')}
-                    disabled={isUpgrading || profile?.subscription_status === 'pro'}
-                    className="w-full gradient-pro"
-                  >
-                    {profile?.subscription_status === 'pro' ? "Current Plan" : isUpgrading ? "Redirecting..." : "Upgrade to Pro"}
-                  </Button>
+                  {getTierButton('pro')}
                 </CardContent>
               </Card>
 
               {/* Premium Tier Card */}
-              <Card className={`glass-card p-4 transition-all duration-300 ${profile?.subscription_status === 'premium' ? 'border-2 border-primary shadow-glow' : ''}`}>
-                <CardHeader className="text-center pb-2">
-                  <h4 className="font-bold text-lg">Premium</h4>
-                  <p className="text-xl font-semibold mt-1">$25<span className="text-sm text-muted-foreground">/month</span></p>
+              <Card className={`glass-card p-6 transition-all duration-300 ${profile?.subscription_status === 'premium' ? 'border-2 border-purple-500 shadow-glow' : 'border border-gray-200'}`}>
+                <CardHeader className="text-center pb-4">
+                  <h4 className="font-bold text-xl">Premium</h4>
+                  <p className="text-3xl font-bold mt-2">$25<span className="text-sm text-muted-foreground font-normal">/month</span></p>
                   <CardDescription className="text-sm">Everything in Pro, plus exclusive benefits.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <ul className="text-left text-sm space-y-2 mb-4">
-                    <li>• All Pro features</li>
-                    <li>• Outlook and Google Calendar sync</li>
-                    <li>• Priority customer support</li>
+                <CardContent className="space-y-4">
+                  <ul className="text-left text-sm space-y-3 mb-6">
+                    {getPlanFeatures('premium').map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-purple-500 mt-0.5">•</span>
+                        {feature}
+                      </li>
+                    ))}
                   </ul>
-                  <Button 
-                    size="sm" 
-                    onClick={() => handleUpgradeClick('premium')}
-                    disabled={isUpgrading || profile?.subscription_status === 'premium'}
-                    className="w-full gradient-premium"
-                  >
-                    {profile?.subscription_status === 'premium' ? "Current Plan" : isUpgrading ? "Redirecting..." : "Upgrade to Premium"}
-                  </Button>
+                  {getTierButton('premium')}
                 </CardContent>
               </Card>
           </div>
+          
+          <div className="mt-6 p-4 bg-pink-50 rounded-lg">
+            <h4 className="font-medium text-pink-500 mb-2">Important Notes:</h4>
+            <ul className="text-sm text-pink-500 space-y-1">
+              <li>• Plan changes take effect immediately after successful payment</li>
+              <li>• You'll be redirected to Stripe for secure payment processing</li>
+              <li>• If your status doesn't update, use the Refresh button in the top right</li>
+              <li>• Contact support if you experience any issues</li>
+            </ul>
+          </div>
         </DialogContent>
       </Dialog>
+      
     </Dialog>
   );
 };

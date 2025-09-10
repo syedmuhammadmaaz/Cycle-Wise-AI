@@ -14,7 +14,7 @@ import {
   Settings, 
   Crown,
   Plus,
-    TrendingUp,
+  TrendingUp,
   Activity,
   Users
 } from 'lucide-react';
@@ -32,6 +32,8 @@ interface Profile {
   subscription_status: string;
   google_calendar_connected: boolean;
   outlook_calendar_connected: boolean;
+  // CHANGE: Added this field to the Profile interface
+  apple_caldav_connected: boolean;
   calendar_provider: string;
 }
 
@@ -47,7 +49,7 @@ interface Cycle {
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<Profile | null | any >(null);
   const [cycles, setCycles] = useState<Cycle[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [showCycleForm, setShowCycleForm] = useState(false);
@@ -72,9 +74,10 @@ const Dashboard = () => {
 
   const fetchProfile = async () => {
     try {
+      // CHANGE: Added 'apple_caldav_connected' to the select statement to fetch the new column
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, apple_caldav_connected')
         .eq('user_id', user?.id)
         .single();
 
@@ -84,7 +87,7 @@ const Dashboard = () => {
       console.error('Error fetching profile:', error);
     }
   };
-const formatDate = (dateString) => {
+const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   const userTimezoneOffset = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() + userTimezoneOffset);
@@ -223,7 +226,7 @@ const formatDate = (dateString) => {
                         <div>
                           <div className="font-medium">
                             {formatDate(cycle.start_date)}
-{cycle.end_date && ` - ${formatDate(cycle.end_date)}`}
+                            {cycle.end_date && ` - ${formatDate(cycle.end_date)}`}
                           </div>
                           <div className="text-sm text-muted-foreground">
                             {cycle.cycle_length && `${cycle.cycle_length} day cycle`}
@@ -315,9 +318,13 @@ const formatDate = (dateString) => {
             <CalendarConnection 
               googleConnected={profile?.google_calendar_connected || false}
               outlookConnected={profile?.outlook_calendar_connected || false}
-              onConnectionChange={() => {
-                fetchProfile();
-                loadEvents(); // re-load highlights
+              // CHANGE: The appleConnected prop is now passed here
+              appleConnected={profile?.apple_caldav_connected || false}
+              // CHANGE: The callback now fetches all data again after a connection change
+              onConnectionChange={async () => {
+                await fetchProfile();
+                await fetchCycles();
+                await loadEvents();
               }}
             />
           </div>
@@ -329,7 +336,7 @@ const formatDate = (dateString) => {
           onClose={() => setShowCycleForm(false)}
           onCycleAdded={() => {
             fetchCycles();
-            loadEvents(); // re-load highlights
+            loadEvents();
             setShowCycleForm(false);
             toast({
               title: "Cycle added successfully",
@@ -346,10 +353,14 @@ const formatDate = (dateString) => {
       {showProfileSettings && (
         <ProfileSettings 
           isOpen={showProfileSettings}
-          onClose={() => setShowProfileSettings(false)} 
+          onClose={() => {
+            setShowProfileSettings(false);
+            fetchProfile();
+          }}
+          profile={profile}
+          onProfileUpdated={fetchProfile}
         />
       )}
-      
     </div>
   );
 };
